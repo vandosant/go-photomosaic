@@ -33,24 +33,21 @@ func IndexHandler(w http.ResponseWriter, r *http.Request) {
 
 func InstagramHandler(w http.ResponseWriter, r *http.Request) {
   err := setEnv("./.env")
-
   if err != nil {
     log.Fatal(err)
   }
-
-  fmt.Fprint(w, "s")
-
 
   res, err := http.Get("https://api.instagram.com/v1/tags/nofilter/media/recent?client_id="+ os.Getenv("CLIENT_ID"))
   if err != nil {
     fmt.Fprint(w, "Failed to create request.")
   }
+
   json, err := ioutil.ReadAll(res.Body)
 	res.Body.Close()
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Printf("%s", json)
+	fmt.Fprint(w, string(json))
 }
 
 func FileCreateHandler(w http.ResponseWriter, r *http.Request) {
