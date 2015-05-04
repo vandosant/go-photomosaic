@@ -32,9 +32,11 @@ func IndexHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func InstagramHandler(w http.ResponseWriter, r *http.Request) {
-  err := setEnv("./.env")
-  if err != nil {
-    log.Fatal(err)
+  if _, err := os.Stat("./.env"); err == nil {
+    err := setEnv("./.env")
+    if err != nil {
+      log.Fatal(err)
+    }
   }
 
   res, err := http.Get("https://api.instagram.com/v1/tags/nofilter/media/recent?client_id="+ os.Getenv("CLIENT_ID"))
