@@ -6,6 +6,9 @@ import (
   "fmt"
   "os"
   "io"
+  "strings"
+  "errors"
+  "io/ioutil"
   "encoding/base64"
   "crypto/rand"
   "image"
@@ -14,17 +17,40 @@ import (
 
 func main() {
   port := os.Getenv("PORT")
-if port == "" {
-  port = "8080"
-}
+  if port == "" {
+    port = "8080"
+  }
 
   http.HandleFunc("/files/new", FileCreateHandler)
+  http.HandleFunc("/instagram", InstagramHandler)
   http.Handle("/", http.FileServer(http.Dir("public")))
   log.Fatal(http.ListenAndServe(":"+port, nil))
 }
 
 func IndexHandler(w http.ResponseWriter, r *http.Request) {
   fmt.Fprint(w, "Photo-mosaic Generator")
+}
+
+func InstagramHandler(w http.ResponseWriter, r *http.Request) {
+  err := setEnv("./.env")
+
+  if err != nil {
+    log.Fatal(err)
+  }
+
+  fmt.Fprint(w, "s")
+
+
+  res, err := http.Get("https://api.instagram.com/v1/tags/nofilter/media/recent?client_id="+ os.Getenv("CLIENT_ID"))
+  if err != nil {
+    fmt.Fprint(w, "Failed to create request.")
+  }
+  json, err := ioutil.ReadAll(res.Body)
+	res.Body.Close()
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("%s", json)
 }
 
 func FileCreateHandler(w http.ResponseWriter, r *http.Request) {
@@ -88,16 +114,45 @@ func FileCreateHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // helpers
+func check(e error) {
+    if e != nil {
+        panic(e)
+    }
+}
+
 func random(size int) string {
   rb := make([]byte,size)
   _, err := rand.Read(rb)
-
-
-  if err != nil {
-     fmt.Println(err)
-  }
+  check(err)
 
   rs := base64.URLEncoding.EncodeToString(rb)
 
   return rs
+}
+
+func setEnv(p string) (error) {
+  f, err := os.Open(p)
+  check(err)
+
+  defer f.Close()
+
+  b := make([]byte, 80)
+
+  n, err := f.Read(b)
+  if err != nil {
+    return err
+  }
+  if n == 0 {
+    return errors.New("No bytes read.")
+  }
+
+  x := strings.Split(string(b), "\n")
+
+  for _, line := range x {
+    kv := strings.Split(line, "=")
+    if len(kv) == 2 {
+      os.Setenv(kv[0], kv[1])
+    }
+      }
+  return err
 }
