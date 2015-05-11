@@ -28,19 +28,10 @@ func TestIndexHandlerReturnsText (t *testing.T) {
 }
 
 func TestSettingEnvVariables (t *testing.T) {
-  // var env []string
-    err := setEnv("./.env")
+    err := setEnv("./specs/examples/.envtest")
     if err != nil {
       t.Errorf("Failed to set env variables. %s", err)
     }
-    // env = os.Environ()
-
-    // fmt.Println("List of Environtment variables : \n")
-
-    // for index, value := range env {
-      //  name := strings.Split(value, "=") // split by = sign
-      //  fmt.Printf("[%d] %s : %v\n", index, name[0], name[1])
-    // }
 
     v := os.Getenv("TEST")
     expected := "someuuid1234"
