@@ -10,6 +10,7 @@ import (
   "errors"
   "io/ioutil"
   "encoding/base64"
+  "encoding/json"
   "crypto/rand"
   "image"
   _ "image/jpeg"
@@ -92,6 +93,8 @@ func FileCreateHandler(w http.ResponseWriter, r *http.Request) {
 	bounds := m.Bounds()
 
   var histogram [16][4]int
+  histograms := make([][16][4]int, 0)
+
 	for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
 		for x := bounds.Min.X; x < bounds.Max.X; x++ {
 			r, g, b, a := m.At(x, y).RGBA()
@@ -103,6 +106,7 @@ func FileCreateHandler(w http.ResponseWriter, r *http.Request) {
 			histogram[a>>12][3]++
 		}
 	}
+  histograms = append(histograms, histogram)
 
   fmt.Printf("%-14s %6s %6s %6s %6s\n", "bin", "red", "green", "blue", "alpha")
 	for i, x := range histogram {
@@ -110,6 +114,104 @@ func FileCreateHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
   fmt.Println(w, "File uploaded successfully")
+
+  if _, err := os.Stat("./.env"); err == nil {
+    err := setEnv("./.env")
+    if err != nil {
+      log.Fatal(err)
+    }
+  }
+
+  res, err := http.Get("https://api.instagram.com/v1/tags/nofilter/media/recent?client_id="+ os.Getenv("CLIENT_ID"))
+  if err != nil {
+    fmt.Fprint(w, "Failed to create request.")
+  }
+
+  response, err := ioutil.ReadAll(res.Body)
+  res.Body.Close()
+  if err != nil {
+    log.Fatal(err)
+  }
+
+  var data MediasResponse
+
+  err = json.Unmarshal(response, &data)
+  if err != nil {
+    log.Fatal(err)
+  }
+  fmt.Printf("Results: %v\n", data)
+}
+
+type MediasResponse struct {
+    MetaResponse
+    Medias []Media `json:"data"`
+}
+
+type MetaResponse struct {
+    Meta *Meta
+}
+
+type Meta struct {
+    Code         int
+    ErrorType    string `json:"error_type"`
+    ErrorMessage string `json:"error_message"`
+}
+
+type Media struct {
+    Type         string
+    Id           string
+    UsersInPhoto []UserPosition `json:"users_in_photo"`
+    Filter       string
+    Tags         []string
+    // Comments     *Comments
+    // Caption      *Caption
+    // Likes        *Likes
+    Link         string
+    // User         *User
+    // CreatedTime  StringUnixTime `json:"created_time"`
+    Images       *Images
+    // Videos       *Videos
+    // Location     *Location
+    UserHasLiked bool `json:"user_has_liked"`
+    // Attribution  *Attribution
+}
+
+type UserPosition struct {
+    User     *User
+    Position *Position
+}
+
+type User struct {
+    Id             string
+    Username       string
+    FullName       string `json:"full_name"`
+    ProfilePicture string `json:"profile_picture"`
+    Bio            string
+    Website        string
+    Counts         *UserCounts
+}
+
+type Position struct {
+    X   float64
+    Y   float64
+}
+
+type UserCounts struct {
+    Media      int64
+    Follows    int64
+    FollowedBy int64 `json:"followed_by"`
+}
+
+type Images struct {
+    LowResolution      *Image `json:"low_resolution"`
+    Thumbnail          *Image
+    StandardResolution *Image `json:"standard_resolution"`
+}
+
+type Image struct {
+    Url    string
+    Width  int64
+    Height int64
 }
 
 // helpers
