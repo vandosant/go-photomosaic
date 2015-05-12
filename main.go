@@ -140,6 +140,7 @@ func FileCreateHandler(w http.ResponseWriter, r *http.Request) {
     log.Fatal(err)
   }
   fmt.Printf("Results: %v\n", data)
+  fmt.Printf("Medias: %v\n", data.Medias[0].Images.LowResolution.Url)
 }
 
 type MediasResponse struct {
@@ -158,40 +159,7 @@ type Meta struct {
 }
 
 type Media struct {
-    Type         string
-    Id           string
-    UsersInPhoto []UserPosition `json:"users_in_photo"`
-    Filter       string
-    Tags         []string
-    Link         string
     Images       *Images
-    UserHasLiked bool `json:"user_has_liked"`
-}
-
-type UserPosition struct {
-    User     *User
-    Position *Position
-}
-
-type User struct {
-    Id             string
-    Username       string
-    FullName       string `json:"full_name"`
-    ProfilePicture string `json:"profile_picture"`
-    Bio            string
-    Website        string
-    Counts         *UserCounts
-}
-
-type Position struct {
-    X   float64
-    Y   float64
-}
-
-type UserCounts struct {
-    Media      int64
-    Follows    int64
-    FollowedBy int64 `json:"followed_by"`
 }
 
 type Images struct {
