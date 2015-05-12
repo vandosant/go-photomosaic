@@ -163,17 +163,9 @@ type Media struct {
     UsersInPhoto []UserPosition `json:"users_in_photo"`
     Filter       string
     Tags         []string
-    // Comments     *Comments
-    // Caption      *Caption
-    // Likes        *Likes
     Link         string
-    // User         *User
-    // CreatedTime  StringUnixTime `json:"created_time"`
     Images       *Images
-    // Videos       *Videos
-    // Location     *Location
     UserHasLiked bool `json:"user_has_liked"`
-    // Attribution  *Attribution
 }
 
 type UserPosition struct {
