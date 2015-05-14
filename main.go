@@ -23,34 +23,12 @@ func main() {
   }
 
   http.HandleFunc("/files/new", FileCreateHandler)
-  http.HandleFunc("/instagram", InstagramHandler)
   http.Handle("/", http.FileServer(http.Dir("public")))
   log.Fatal(http.ListenAndServe(":"+port, nil))
 }
 
 func IndexHandler(w http.ResponseWriter, r *http.Request) {
   fmt.Fprint(w, "Photo-mosaic Generator")
-}
-
-func InstagramHandler(w http.ResponseWriter, r *http.Request) {
-  if _, err := os.Stat("./.env"); err == nil {
-    err := setEnv("./.env")
-    if err != nil {
-      log.Fatal(err)
-    }
-  }
-
-  res, err := http.Get("https://api.instagram.com/v1/tags/nofilter/media/recent?client_id="+ os.Getenv("CLIENT_ID"))
-  if err != nil {
-    fmt.Fprint(w, "Failed to create request.")
-  }
-
-  json, err := ioutil.ReadAll(res.Body)
-	res.Body.Close()
-	if err != nil {
-		log.Fatal(err)
-	}
-	fmt.Fprint(w, string(json))
 }
 
 func FileCreateHandler(w http.ResponseWriter, r *http.Request) {
