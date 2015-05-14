@@ -12,6 +12,8 @@ import (
   "encoding/base64"
   "encoding/json"
   "crypto/rand"
+  "mime/multipart"
+  "bytes"
   "image"
   _ "image/jpeg"
 )
@@ -120,12 +122,46 @@ func FileCreateHandler(w http.ResponseWriter, r *http.Request) {
   fmt.Printf("Results: %v\n", data)
   fmt.Printf("Medias: %v\n", data.Medias[0].Images.LowResolution.Url)
 
-  res2, err := http.Get(data.Medias[0].Images.LowResolution.Url)
-  if err != nil {
-    fmt.Fprint(w, "Failed to create request.")
-  }
+  filename := "instagram_image"
+  postFile(filename, data.Medias[0].Images.LowResolution.Url)
+}
 
-  fmt.Fprint(w, res2)
+func postFile(filename string, targetUrl string) error {
+    bodyBuf := &bytes.Buffer{}
+    bodyWriter := multipart.NewWriter(bodyBuf)
+
+    fileWriter, err := bodyWriter.CreateFormFile("uploadfile", filename)
+    if err != nil {
+        fmt.Println("error writing to buffer")
+        return err
+    }
+
+    fh, err := os.OpenFile("./tmp/"+filename, os.O_WRONLY|os.O_CREATE, 0666)
+    if err != nil {
+        fmt.Println("error opening file")
+        return err
+    }
+
+    _, err = io.Copy(fileWriter, fh)
+    if err != nil {
+        return err
+    }
+
+    contentType := bodyWriter.FormDataContentType()
+    bodyWriter.Close()
+
+    resp, err := http.Post(targetUrl, contentType, bodyBuf)
+    if err != nil {
+        return err
+    }
+    defer resp.Body.Close()
+    resp_body, err := ioutil.ReadAll(resp.Body)
+    if err != nil {
+        return err
+    }
+    fmt.Println(resp.Status)
+    fmt.Println(string(resp_body))
+    return nil
 }
 
 type MediasResponse struct {
