@@ -141,6 +141,13 @@ func FileCreateHandler(w http.ResponseWriter, r *http.Request) {
   }
   fmt.Printf("Results: %v\n", data)
   fmt.Printf("Medias: %v\n", data.Medias[0].Images.LowResolution.Url)
+
+  res2, err := http.Get(data.Medias[0].Images.LowResolution.Url)
+  if err != nil {
+    fmt.Fprint(w, "Failed to create request.")
+  }
+
+  fmt.Fprint(w, res2)
 }
 
 type MediasResponse struct {
