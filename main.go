@@ -12,9 +12,10 @@ import (
   "encoding/base64"
   "encoding/json"
   "crypto/rand"
-  "mime/multipart"
-  "bytes"
   "image"
+  "path/filepath"
+  "time"
+  "strconv"
   _ "image/jpeg"
 )
 
@@ -122,46 +123,72 @@ func FileCreateHandler(w http.ResponseWriter, r *http.Request) {
   fmt.Printf("Results: %v\n", data)
   fmt.Printf("Medias: %v\n", data.Medias[0].Images.LowResolution.Url)
 
-  filename := "instagram_image"
-  postFile(filename, data.Medias[0].Images.LowResolution.Url)
+  file_path, err := postFile(data.Medias[0].Images.LowResolution.Url)
+  if err != nil {
+    log.Fatal(err)
+  }
+
+  fmt.Fprint(w, file_path)
 }
 
-func postFile(filename string, targetUrl string) error {
-    bodyBuf := &bytes.Buffer{}
-    bodyWriter := multipart.NewWriter(bodyBuf)
+func postFile(targetUrl string) (string, error) {
+  type_ext := filepath.Ext(targetUrl)
 
-    fileWriter, err := bodyWriter.CreateFormFile("uploadfile", filename)
+  dir, err := dir_full_path()
+  if err != nil {
+    return "", err
+  }
+
+  file_name := random(20) + type_ext
+  file_path := dir + file_name
+
+  os.Mkdir(dir, 0666)
+
+  file, err := os.Create(file_path)
+  if err != nil {
+    return "", err
+  }
+  defer file.Close()
+
+  res, err := http.Get(targetUrl)
+  if err != nil {
+    return "", err
+  }
+  defer res.Body.Close()
+
+  file_content, err := ioutil.ReadAll(res.Body)
+  if err != nil {
+    return "", err
+  }
+
+  i, err := file.Write(file_content)
+  if err != nil {
+    return "", err
+  }
+  fmt.Print(string(i))
+
+  return file_path, nil
+}
+
+func dir_full_path() (string, error) {
+    path, err := filepath.Abs("tmp")
+
     if err != nil {
-        fmt.Println("error writing to buffer")
-        return err
+        return "", err
     }
 
-    fh, err := os.OpenFile("./tmp/"+filename, os.O_WRONLY|os.O_CREATE, 0666)
-    if err != nil {
-        fmt.Println("error opening file")
-        return err
-    }
+    t := time.Now()
 
-    _, err = io.Copy(fileWriter, fh)
-    if err != nil {
-        return err
-    }
+    s := path +
+        string(os.PathSeparator) +
+        strconv.Itoa(t.Day()) +
+        "_" +
+        strconv.Itoa(int(t.Month())) +
+        "_" +
+        strconv.Itoa(t.Year()) +
+        string(os.PathSeparator)
 
-    contentType := bodyWriter.FormDataContentType()
-    bodyWriter.Close()
-
-    resp, err := http.Post(targetUrl, contentType, bodyBuf)
-    if err != nil {
-        return err
-    }
-    defer resp.Body.Close()
-    resp_body, err := ioutil.ReadAll(resp.Body)
-    if err != nil {
-        return err
-    }
-    fmt.Println(resp.Status)
-    fmt.Println(string(resp_body))
-    return nil
+    return s, nil
 }
 
 type MediasResponse struct {
