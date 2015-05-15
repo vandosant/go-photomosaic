@@ -14,8 +14,6 @@ import (
   "crypto/rand"
   "image"
   "path/filepath"
-  "time"
-  "strconv"
   _ "image/jpeg"
 )
 
@@ -134,17 +132,13 @@ func FileCreateHandler(w http.ResponseWriter, r *http.Request) {
 func postFile(targetUrl string) (string, error) {
   type_ext := filepath.Ext(targetUrl)
 
-  dir, err := dir_full_path()
-  if err != nil {
-    return "", err
-  }
-
+  dir := "./tmp"
   file_name := random(20) + type_ext
   file_path := dir + file_name
 
   os.Mkdir(dir, 0666)
 
-  file, err := os.Create(file_path)
+  file, err := os.Create(dir + "/" + file_name)
   if err != nil {
     return "", err
   }
@@ -168,27 +162,6 @@ func postFile(targetUrl string) (string, error) {
   fmt.Print(string(i))
 
   return file_path, nil
-}
-
-func dir_full_path() (string, error) {
-    path, err := filepath.Abs("tmp")
-
-    if err != nil {
-        return "", err
-    }
-
-    t := time.Now()
-
-    s := path +
-        string(os.PathSeparator) +
-        strconv.Itoa(t.Day()) +
-        "_" +
-        strconv.Itoa(int(t.Month())) +
-        "_" +
-        strconv.Itoa(t.Year()) +
-        string(os.PathSeparator)
-
-    return s, nil
 }
 
 type MediasResponse struct {
