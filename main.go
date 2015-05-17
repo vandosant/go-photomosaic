@@ -94,11 +94,9 @@ func FileCreateHandler(w http.ResponseWriter, r *http.Request) {
 
   fmt.Println(w, "File uploaded successfully")
 
-  if _, err := os.Stat("./.env"); err == nil {
-    err := setEnv("./.env")
-    if err != nil {
-      log.Fatal(err)
-    }
+  err = setEnv()
+  if err != nil {
+    fmt.Fprint(w, "Failed to set env variables.")
   }
 
   res, err := http.Get("https://api.instagram.com/v1/tags/nofilter/media/recent?client_id="+ os.Getenv("CLIENT_ID"))
@@ -212,9 +210,16 @@ func random(size int) string {
   return rs
 }
 
-func setEnv(p string) (error) {
-  f, err := os.Open(p)
-  check(err)
+func setEnv() (error) {
+  _, err := os.Stat("./.env")
+  if err != nil {
+    return err
+  }
+
+  f, err := os.Open("./.env")
+  if err != nil {
+    log.Fatal(err)
+  }
 
   defer f.Close()
 
