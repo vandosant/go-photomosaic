@@ -40,7 +40,7 @@ func FileCreateHandler(w http.ResponseWriter, r *http.Request) {
 
   id := random(32)
 
-  out, err := os.OpenFile("./tmp/testfile"+id, os.O_WRONLY|os.O_CREATE, 0666)
+  out, err := os.OpenFile("./tmp/testfile"+id+".jpg", os.O_WRONLY|os.O_CREATE, 0666)
   if err != nil {
     fmt.Println(w, "Unable to create file.")
     return
@@ -56,7 +56,7 @@ func FileCreateHandler(w http.ResponseWriter, r *http.Request) {
 
   histograms := make([][16][4]int, 0)
 
-  parent_histogram, err := generateHistogram("./tmp/testfile"+id)
+  parent_histogram, err := generateHistogram("./tmp/testfile"+id+".jpg")
   if err != nil {
     log.Fatal(err)
   }
@@ -101,12 +101,23 @@ func FileCreateHandler(w http.ResponseWriter, r *http.Request) {
       log.Fatal(err)
     }
 
-    histograms = append(histograms, histogram)
-
-    fmt.Printf("%-14s %6s %6s %6s %6s\n", "bin", "red", "green", "blue", "alpha")
+    out_of_bounds := false
     for i, x := range histogram {
-      fmt.Printf("hist: r - %d, g - %d, b - %d\n", x[0], x[1], x[2])
-      fmt.Printf("0x%04x-0x%04x: %6d %6d %6d %6d\n", i<<12, (i+1)<<12-1, x[0], x[1], x[2], x[3])
+      r, g, b := parent_histogram[i][0] - x[0], parent_histogram[i][1] - x[1], parent_histogram[i][2] - x[2]
+      if r > 10000 || g > 10000 || b > 10000 || r < -10000 || g < -10000 || b < -10000 {
+        out_of_bounds = true
+        fmt.Println("breaking...")
+        break
+      }
+    }
+
+    if out_of_bounds == false {
+      histograms = append(histograms, histogram)
+      fmt.Printf("WINNER: %-14s %6s %6s %6s %6s\n", "bin", "red", "green", "blue", "alpha")
+      for i, x := range parent_histogram {
+        fmt.Printf("hist: r - %d, g - %d, b - %d\n", x[0], x[1], x[2])
+        fmt.Printf("0x%04x-0x%04x: %6d %6d %6d %6d\n", i<<12, (i+1)<<12-1, x[0], x[1], x[2], x[3])
+      }
     }
   }
 }
