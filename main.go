@@ -10,6 +10,7 @@ import (
   "encoding/json"
   "image"
   "path/filepath"
+  "bytes"
   _ "image/jpeg"
 )
 
@@ -56,7 +57,7 @@ func FileCreateHandler(w http.ResponseWriter, r *http.Request) {
 
   histograms := make([][16][4]int, 0)
 
-  parent_histogram, err := generateHistogram("./tmp/testfile"+id+".jpg")
+  parent_histogram, err := generateHistogramFromFile("./tmp/testfile"+id+".jpg")
   if err != nil {
     log.Fatal(err)
   }
@@ -91,12 +92,19 @@ func FileCreateHandler(w http.ResponseWriter, r *http.Request) {
 
   for _, media := range data.Medias {
     fmt.Printf("Image: %v\n", media.Images.LowResolution.Url)
-    file_path, err := postFile(media.Images.LowResolution.Url)
+
+    res, err := http.Get(media.Images.LowResolution.Url)
+    if err != nil {
+      log.Fatal(err)
+    }
+    defer res.Body.Close()
+
+    file_content, err := ioutil.ReadAll(res.Body)
     if err != nil {
       log.Fatal(err)
     }
 
-    histogram, err := generateHistogram(file_path)
+    histogram, err := generateHistogramFromContents(file_content)
     if err != nil {
       log.Fatal(err)
     }
@@ -118,11 +126,13 @@ func FileCreateHandler(w http.ResponseWriter, r *http.Request) {
         fmt.Printf("hist: r - %d, g - %d, b - %d\n", x[0], x[1], x[2])
         fmt.Printf("0x%04x-0x%04x: %6d %6d %6d %6d\n", i<<12, (i+1)<<12-1, x[0], x[1], x[2], x[3])
       }
+
+      postFile(media.Images.LowResolution.Url)
     }
   }
 }
 
-func generateHistogram(file_path string) ([16][4]int, error) {
+func generateHistogramFromFile(file_path string) ([16][4]int, error) {
   var histogram [16][4]int
 
   reader, err := os.Open(file_path)
@@ -131,6 +141,32 @@ func generateHistogram(file_path string) ([16][4]int, error) {
   }
 
   defer reader.Close()
+
+  m, _, err := image.Decode(reader)
+  if err != nil {
+    return histogram, err
+  }
+  bounds := m.Bounds()
+
+  for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
+    for x := bounds.Min.X; x < bounds.Max.X; x++ {
+      r, g, b, a := m.At(x, y).RGBA()
+      // A color's RGBA method returns values in the range [0, 65535].
+      // Shifting by 12 reduces this to the range [0, 15].
+      histogram[r>>12][0]++
+      histogram[g>>12][1]++
+      histogram[b>>12][2]++
+      histogram[a>>12][3]++
+    }
+  }
+
+  return histogram, nil
+}
+
+func generateHistogramFromContents(file_content []byte) ([16][4]int, error) {
+  var histogram [16][4]int
+
+  reader := bytes.NewReader(file_content)
 
   m, _, err := image.Decode(reader)
   if err != nil {
