@@ -134,11 +134,11 @@ func postFile(targetUrl string) (string, error) {
 
   dir := "./tmp"
   file_name := random(20) + type_ext
-  file_path := dir + file_name
+  file_path := dir + "/" + file_name
 
   os.Mkdir(dir, 0666)
 
-  file, err := os.Create(dir + "/" + file_name)
+  file, err := os.Create(file_path)
   if err != nil {
     return "", err
   }
