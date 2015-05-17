@@ -6,12 +6,8 @@ import (
   "fmt"
   "os"
   "io"
-  "strings"
-  "errors"
   "io/ioutil"
-  "encoding/base64"
   "encoding/json"
-  "crypto/rand"
   "image"
   "path/filepath"
   _ "image/jpeg"
@@ -160,86 +156,4 @@ func postFile(targetUrl string) (string, error) {
   fmt.Print(string(i))
 
   return file_path, nil
-}
-
-type MediasResponse struct {
-    MetaResponse
-    Medias []Media `json:"data"`
-}
-
-type MetaResponse struct {
-    Meta *Meta
-}
-
-type Meta struct {
-    Code         int
-    ErrorType    string `json:"error_type"`
-    ErrorMessage string `json:"error_message"`
-}
-
-type Media struct {
-    Images       *Images
-}
-
-type Images struct {
-    LowResolution      *Image `json:"low_resolution"`
-    Thumbnail          *Image
-    StandardResolution *Image `json:"standard_resolution"`
-}
-
-type Image struct {
-    Url    string
-    Width  int64
-    Height int64
-}
-
-// helpers
-func check(e error) {
-    if e != nil {
-        panic(e)
-    }
-}
-
-func random(size int) string {
-  rb := make([]byte,size)
-  _, err := rand.Read(rb)
-  check(err)
-
-  rs := base64.URLEncoding.EncodeToString(rb)
-
-  return rs
-}
-
-func setEnv() (error) {
-  _, err := os.Stat("./.env")
-  if err != nil {
-    return err
-  }
-
-  f, err := os.Open("./.env")
-  if err != nil {
-    log.Fatal(err)
-  }
-
-  defer f.Close()
-
-  b := make([]byte, 80)
-
-  n, err := f.Read(b)
-  if err != nil {
-    return err
-  }
-  if n == 0 {
-    return errors.New("No bytes read.")
-  }
-
-  x := strings.Split(string(b), "\n")
-
-  for _, line := range x {
-    kv := strings.Split(line, "=")
-    if len(kv) == 2 {
-      os.Setenv(kv[0], kv[1])
-    }
-      }
-  return err
 }
