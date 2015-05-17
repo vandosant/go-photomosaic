@@ -113,14 +113,15 @@ func FileCreateHandler(w http.ResponseWriter, r *http.Request) {
     log.Fatal(err)
   }
   fmt.Printf("Results: %v\n", data)
-  fmt.Printf("Medias: %v\n", data.Medias[0].Images.LowResolution.Url)
 
-  file_path, err := postFile(data.Medias[0].Images.LowResolution.Url)
-  if err != nil {
-    log.Fatal(err)
+  for _, media := range data.Medias {
+    fmt.Printf("Image: %v\n", media.Images.LowResolution.Url)
+    file_path, err := postFile(media.Images.LowResolution.Url)
+    if err != nil {
+      log.Fatal(err)
+    }
+    fmt.Fprint(w, file_path)
   }
-
-  fmt.Fprint(w, file_path)
 }
 
 func postFile(targetUrl string) (string, error) {
