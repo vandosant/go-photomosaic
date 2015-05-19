@@ -93,30 +93,9 @@ func FileCreateHandler(w http.ResponseWriter, r *http.Request) {
 	for _, media := range data.Medias {
 		fmt.Printf("Image: %v\n", media.Images.LowResolution.Url)
 
-		res, err := http.Get(media.Images.LowResolution.Url)
+		out_of_bounds, histogram, err := compareMedia(media.Images.LowResolution.Url, parent_histogram)
 		if err != nil {
 			log.Fatal(err)
-		}
-		defer res.Body.Close()
-
-		file_content, err := ioutil.ReadAll(res.Body)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		histogram, err := generateHistogramFromContents(file_content)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		out_of_bounds := false
-		for i, x := range histogram {
-			r, g, b := parent_histogram[i][0]-x[0], parent_histogram[i][1]-x[1], parent_histogram[i][2]-x[2]
-			if r > 10000 || g > 10000 || b > 10000 || r < -10000 || g < -10000 || b < -10000 {
-				out_of_bounds = true
-				fmt.Println("breaking...")
-				break
-			}
 		}
 
 		if out_of_bounds == false {
@@ -153,29 +132,9 @@ func FileCreateHandler(w http.ResponseWriter, r *http.Request) {
 		for _, media := range data2.Medias {
 			fmt.Printf("Image: %v\n", media.Images.LowResolution.Url)
 
-			res, err := http.Get(media.Images.LowResolution.Url)
+			out_of_bounds, histogram, err := compareMedia(media.Images.LowResolution.Url, parent_histogram)
 			if err != nil {
 				log.Fatal(err)
-			}
-			defer res.Body.Close()
-
-			file_content, err := ioutil.ReadAll(res.Body)
-			if err != nil {
-				log.Fatal(err)
-			}
-
-			histogram, err := generateHistogramFromContents(file_content)
-			if err != nil {
-				log.Fatal(err)
-			}
-
-			out_of_bounds := false
-			for i, x := range histogram {
-				r, g, b := parent_histogram[i][0]-x[0], parent_histogram[i][1]-x[1], parent_histogram[i][2]-x[2]
-				if r > 15000 || g > 15000 || b > 15000 || r < -15000 || g < -15000 || b < -15000 {
-					out_of_bounds = true
-					break
-				}
 			}
 
 			if out_of_bounds == false {
@@ -190,6 +149,34 @@ func FileCreateHandler(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
+}
+
+func compareMedia(url string, parent_histogram [16][4]int) (bool, [16][4]int, error) {
+	res, err := http.Get(url)
+	if err != nil {
+		return true, [16][4]int{}, err
+	}
+	defer res.Body.Close()
+
+	file_content, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		return true, [16][4]int{}, err
+	}
+
+	histogram, err := generateHistogramFromContents(file_content)
+	if err != nil {
+		return true, [16][4]int{}, err
+	}
+
+	for i, x := range histogram {
+		r, g, b := parent_histogram[i][0]-x[0], parent_histogram[i][1]-x[1], parent_histogram[i][2]-x[2]
+		if r > 12000 || g > 12000 || b > 12000 || r < -12000 || g < -12000 || b < -12000 {
+			return true, [16][4]int{}, nil
+			break
+		}
+	}
+
+	return false, histogram, nil
 }
 
 func generateHistogramFromFile(file_path string) ([16][4]int, error) {
