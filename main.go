@@ -74,20 +74,9 @@ func FileCreateHandler(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, "Failed to set env variables.")
 	}
 
-	res, err := http.Get("https://api.instagram.com/v1/tags/nofilter/media/recent?client_id=" + os.Getenv("CLIENT_ID") + "&count=300")
-	if err != nil {
-		fmt.Fprint(w, "Failed to create request.")
-	}
-
-	response, err := ioutil.ReadAll(res.Body)
-	res.Body.Close()
-	if err != nil {
-		log.Fatal(err)
-	}
-
 	var data MediasResponse
-
-	err = json.Unmarshal(response, &data)
+	instagramUrl := "https://api.instagram.com/v1/tags/nofilter/media/recent?client_id=" + os.Getenv("CLIENT_ID") + "&count=300"
+	err = getInstagramData(instagramUrl, &data)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -113,20 +102,9 @@ func FileCreateHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(histograms) == 0 {
-		res, err := http.Get(data.PaginationResponse.Pagination.NextUrl)
-		if err != nil {
-			fmt.Fprint(w, "Failed to create request.")
-		}
-
-		response, err := ioutil.ReadAll(res.Body)
-		res.Body.Close()
-		if err != nil {
-			log.Fatal(err)
-		}
-
 		var data2 MediasResponse
 
-		err = json.Unmarshal(response, &data2)
+		err = getInstagramData(data.PaginationResponse.Pagination.NextUrl, &data2)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -151,6 +129,26 @@ func FileCreateHandler(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
+}
+
+func getInstagramData(url string, data *MediasResponse) (error){
+	res, err := http.Get(url)
+	if err != nil {
+		return err
+	}
+
+	response, err := ioutil.ReadAll(res.Body)
+	res.Body.Close()
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal(response, &data)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func compareMedia(url string, parent_histogram Histogram) (bool, Histogram, error) {
