@@ -75,8 +75,9 @@ func FileCreateHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var data MediasResponse
-	instagramUrl := "https://api.instagram.com/v1/tags/nofilter/media/recent?client_id=" + os.Getenv("CLIENT_ID") + "&count=300"
-	err = getInstagramData(instagramUrl, &data)
+	instagramUrl := "https://api.instagram.com/v1/tags/nofilter/media/recent?client_id=" + os.Getenv("CLIENT_ID")
+	count := 300
+	err = getInstagramData(instagramUrl, count, &data)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -103,8 +104,8 @@ func FileCreateHandler(w http.ResponseWriter, r *http.Request) {
 
 	if len(histograms) == 0 {
 		var data2 MediasResponse
-
-		err = getInstagramData(data.PaginationResponse.Pagination.NextUrl, &data2)
+		count := 300
+		err = getInstagramData(data.PaginationResponse.Pagination.NextUrl, count, &data2)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -131,8 +132,8 @@ func FileCreateHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func getInstagramData(url string, data *MediasResponse) (error){
-	res, err := http.Get(url)
+func getInstagramData(url string, count int, data *MediasResponse) (error){
+	res, err := http.Get(url + "&count=" + string(count))
 	if err != nil {
 		return err
 	}
