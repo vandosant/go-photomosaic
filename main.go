@@ -77,40 +77,14 @@ func FileCreateHandler(w http.ResponseWriter, r *http.Request) {
 	var data MediasResponse
 	instagramUrl := "https://api.instagram.com/v1/tags/nofilter/media/recent?client_id=" + os.Getenv("CLIENT_ID")
 	count := 300
-	err = getInstagramData(instagramUrl, count, &data)
-	if err != nil {
-		log.Fatal(err)
-	}
 
-	for _, media := range data.Medias {
-		fmt.Printf("Image: %v\n", media.Images.LowResolution.Url)
-
-		out_of_bounds, histogram, err := compareMedia(media.Images.LowResolution.Url, parent_histogram)
+	for len(histograms) == 0 {
+		err = getInstagramData(instagramUrl, count, &data)
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		if out_of_bounds == false {
-			histograms = append(histograms, histogram)
-			fmt.Printf("WINNER: %-14s %6s %6s %6s %6s\n", "bin", "red", "green", "blue", "alpha")
-			for i, x := range parent_histogram {
-				fmt.Printf("hist: r - %d, g - %d, b - %d\n", x[0], x[1], x[2])
-				fmt.Printf("0x%04x-0x%04x: %6d %6d %6d %6d\n", i<<12, (i+1)<<12-1, x[0], x[1], x[2], x[3])
-			}
-
-			postFile(media.Images.LowResolution.Url)
-		}
-	}
-
-	if len(histograms) == 0 {
-		var data2 MediasResponse
-		count := 300
-		err = getInstagramData(data.PaginationResponse.Pagination.NextUrl, count, &data2)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		for _, media := range data2.Medias {
+		for _, media := range data.Medias {
 			fmt.Printf("Image: %v\n", media.Images.LowResolution.Url)
 
 			out_of_bounds, histogram, err := compareMedia(media.Images.LowResolution.Url, parent_histogram)
@@ -120,15 +94,10 @@ func FileCreateHandler(w http.ResponseWriter, r *http.Request) {
 
 			if out_of_bounds == false {
 				histograms = append(histograms, histogram)
-				fmt.Printf("WINNER: %-14s %6s %6s %6s %6s\n", "bin", "red", "green", "blue", "alpha")
-				for i, x := range parent_histogram {
-					fmt.Printf("hist: r - %d, g - %d, b - %d\n", x[0], x[1], x[2])
-					fmt.Printf("0x%04x-0x%04x: %6d %6d %6d %6d\n", i<<12, (i+1)<<12-1, x[0], x[1], x[2], x[3])
-				}
-
 				postFile(media.Images.LowResolution.Url)
 			}
 		}
+		instagramUrl = data.PaginationResponse.Pagination.NextUrl
 	}
 }
 
