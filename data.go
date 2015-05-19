@@ -15,7 +15,7 @@ type PaginationResponse struct {
 }
 
 type Pagination struct {
-	NextUrl string `json:"next_url"`
+	NextUrl   string `json:"next_url"`
 	NextMaxId string `json:"next_max_id"`
 }
 
