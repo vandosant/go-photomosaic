@@ -153,27 +153,27 @@ func FileCreateHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func compareMedia(url string, parent_histogram Histogram) (bool, [16][4]int, error) {
+func compareMedia(url string, parent_histogram Histogram) (bool, Histogram, error) {
 	res, err := http.Get(url)
 	if err != nil {
-		return true, [16][4]int{}, err
+		return true, Histogram{}, err
 	}
 	defer res.Body.Close()
 
 	file_content, err := ioutil.ReadAll(res.Body)
 	if err != nil {
-		return true, [16][4]int{}, err
+		return true, Histogram{}, err
 	}
 
 	histogram, err := generateHistogramFromContents(file_content)
 	if err != nil {
-		return true, [16][4]int{}, err
+		return true, histogram, err
 	}
 
 	for i, x := range histogram {
 		r, g, b := parent_histogram[i][0]-x[0], parent_histogram[i][1]-x[1], parent_histogram[i][2]-x[2]
 		if r > 12000 || g > 12000 || b > 12000 || r < -12000 || g < -12000 || b < -12000 {
-			return true, [16][4]int{}, nil
+			return true, histogram, nil
 			break
 		}
 	}
@@ -212,8 +212,8 @@ func generateHistogramFromFile(file_path string) (Histogram, error) {
 	return histogram, nil
 }
 
-func generateHistogramFromContents(file_content []byte) ([16][4]int, error) {
-	var histogram [16][4]int
+func generateHistogramFromContents(file_content []byte) (Histogram, error) {
+	histogram := Histogram{}
 
 	reader := bytes.NewReader(file_content)
 
