@@ -72,7 +72,7 @@ func FileCreateHandler(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, "Failed to set env variables.")
 	}
 
-	res, err := http.Get("https://api.instagram.com/v1/tags/nofilter/media/recent?client_id=" + os.Getenv("CLIENT_ID"))
+	res, err := http.Get("https://api.instagram.com/v1/tags/nofilter/media/recent?client_id=" + os.Getenv("CLIENT_ID") + "&count=300")
 	if err != nil {
 		fmt.Fprint(w, "Failed to create request.")
 	}
