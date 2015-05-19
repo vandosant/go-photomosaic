@@ -14,6 +14,8 @@ import (
 	"path/filepath"
 )
 
+type Histogram [16][4]int
+
 func main() {
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -55,7 +57,7 @@ func FileCreateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	histograms := make([][16][4]int, 0)
+	histograms := make([]Histogram, 0)
 
 	parent_histogram, err := generateHistogramFromFile("./tmp/testfile" + id + ".jpg")
 	if err != nil {
@@ -151,7 +153,7 @@ func FileCreateHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func compareMedia(url string, parent_histogram [16][4]int) (bool, [16][4]int, error) {
+func compareMedia(url string, parent_histogram Histogram) (bool, [16][4]int, error) {
 	res, err := http.Get(url)
 	if err != nil {
 		return true, [16][4]int{}, err
@@ -179,8 +181,8 @@ func compareMedia(url string, parent_histogram [16][4]int) (bool, [16][4]int, er
 	return false, histogram, nil
 }
 
-func generateHistogramFromFile(file_path string) ([16][4]int, error) {
-	var histogram [16][4]int
+func generateHistogramFromFile(file_path string) (Histogram, error) {
+	histogram := Histogram{}
 
 	reader, err := os.Open(file_path)
 	if err != nil {
