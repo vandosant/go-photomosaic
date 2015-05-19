@@ -2,11 +2,21 @@ package main
 
 type MediasResponse struct {
 	MetaResponse
+	PaginationResponse
 	Medias []Media `json:"data"`
 }
 
 type MetaResponse struct {
 	Meta *Meta
+}
+
+type PaginationResponse struct {
+	Pagination *Pagination
+}
+
+type Pagination struct {
+	NextUrl string `json:"next_url"`
+	NextMaxId string `json:"next_max_id"`
 }
 
 type Meta struct {

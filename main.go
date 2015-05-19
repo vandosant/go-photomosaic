@@ -130,6 +130,66 @@ func FileCreateHandler(w http.ResponseWriter, r *http.Request) {
 			postFile(media.Images.LowResolution.Url)
 		}
 	}
+
+	if len(histograms) == 0 {
+		res, err := http.Get(data.PaginationResponse.Pagination.NextUrl)
+		if err != nil {
+			fmt.Fprint(w, "Failed to create request.")
+		}
+
+		response, err := ioutil.ReadAll(res.Body)
+		res.Body.Close()
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		var data2 MediasResponse
+
+		err = json.Unmarshal(response, &data2)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		for _, media := range data2.Medias {
+			fmt.Printf("Image: %v\n", media.Images.LowResolution.Url)
+
+			res, err := http.Get(media.Images.LowResolution.Url)
+			if err != nil {
+				log.Fatal(err)
+			}
+			defer res.Body.Close()
+
+			file_content, err := ioutil.ReadAll(res.Body)
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			histogram, err := generateHistogramFromContents(file_content)
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			out_of_bounds := false
+			for i, x := range histogram {
+				r, g, b := parent_histogram[i][0]-x[0], parent_histogram[i][1]-x[1], parent_histogram[i][2]-x[2]
+				if r > 15000 || g > 15000 || b > 15000 || r < -15000 || g < -15000 || b < -15000 {
+					out_of_bounds = true
+					break
+				}
+			}
+
+			if out_of_bounds == false {
+				histograms = append(histograms, histogram)
+				fmt.Printf("WINNER: %-14s %6s %6s %6s %6s\n", "bin", "red", "green", "blue", "alpha")
+				for i, x := range parent_histogram {
+					fmt.Printf("hist: r - %d, g - %d, b - %d\n", x[0], x[1], x[2])
+					fmt.Printf("0x%04x-0x%04x: %6d %6d %6d %6d\n", i<<12, (i+1)<<12-1, x[0], x[1], x[2], x[3])
+				}
+
+				postFile(media.Images.LowResolution.Url)
+			}
+		}
+	}
 }
 
 func generateHistogramFromFile(file_path string) ([16][4]int, error) {
