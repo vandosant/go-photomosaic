@@ -20,6 +20,11 @@ func main() {
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
+
+		err := setEnv()
+		if err != nil {
+			log.Fatal("Failed to set env variables.")
+		}
 	}
 
 	http.HandleFunc("/files/new", FileCreateHandler)
@@ -67,11 +72,6 @@ func FileCreateHandler(w http.ResponseWriter, r *http.Request) {
 	for i, x := range parent_histogram {
 		fmt.Printf("hist: r - %d, g - %d, b - %d\n", x[0], x[1], x[2])
 		fmt.Printf("0x%04x-0x%04x: %6d %6d %6d %6d\n", i<<12, (i+1)<<12-1, x[0], x[1], x[2], x[3])
-	}
-
-	err = setEnv()
-	if err != nil {
-		fmt.Fprint(w, "Failed to set env variables.")
 	}
 
 	var data MediasResponse
