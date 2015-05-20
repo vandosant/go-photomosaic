@@ -25,36 +25,42 @@ func random(size int) string {
 	return rs
 }
 
-func setEnv() error {
-	_, err := os.Stat("./.env")
-	if err != nil {
-		return err
-	}
+func setEnv() (string, error) {
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
 
-	f, err := os.Open("./.env")
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	defer f.Close()
-
-	b := make([]byte, 80)
-
-	n, err := f.Read(b)
-	if err != nil {
-		return err
-	}
-	if n == 0 {
-		return errors.New("No bytes read.")
-	}
-
-	x := strings.Split(string(b), "\n")
-
-	for _, line := range x {
-		kv := strings.Split(line, "=")
-		if len(kv) == 2 {
-			os.Setenv(kv[0], kv[1])
+		_, err := os.Stat("./.env")
+		if err != nil {
+			return port, err
 		}
+
+		f, err := os.Open("./.env")
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		defer f.Close()
+
+		b := make([]byte, 80)
+
+		n, err := f.Read(b)
+		if err != nil {
+			return port, err
+		}
+		if n == 0 {
+			return port, errors.New("No bytes read.")
+		}
+
+		x := strings.Split(string(b), "\n")
+
+		for _, line := range x {
+			kv := strings.Split(line, "=")
+			if len(kv) == 2 {
+				os.Setenv(kv[0], kv[1])
+			}
+		}
+		return port, err
 	}
-	return err
+	return port, nil
 }

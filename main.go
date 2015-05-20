@@ -17,14 +17,9 @@ import (
 type Histogram [16][4]int
 
 func main() {
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080"
-
-		err := setEnv()
-		if err != nil {
-			log.Fatal("Failed to set env variables.")
-		}
+	port, err := setEnv()
+	if err != nil {
+		log.Fatal("Failed to set env variables.")
 	}
 
 	http.HandleFunc("/files/new", FileCreateHandler)
