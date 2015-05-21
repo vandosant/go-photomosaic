@@ -60,10 +60,26 @@ func FileCreateHandler(w http.ResponseWriter, r *http.Request) {
 	histograms := make([]Histogram, 0)
 	imageUrls := make([]string, 0)
 
-	parent_histogram, err := generateHistogramFromFile("./tmp/testfile" + id + ".jpg")
+	parent_file_path := "./tmp/testfile" + id + ".jpg"
+
+	parent_histogram, err := generateHistogramFromFile(parent_file_path)
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	reader, err := os.Open(parent_file_path)
+	if err != nil {
+		fmt.Println(w, "Unable to open file.")
+	}
+
+	defer reader.Close()
+
+	m, _, err := image.Decode(reader)
+	if err != nil {
+		fmt.Println(w, "Unable to decode file.")
+	}
+	parent_bounds := m.Bounds()
+	fmt.Println(parent_bounds)
 
 	var data MediasResponse
 	instagramUrl := "https://api.instagram.com/v1/tags/nofilter/media/recent?client_id=" + os.Getenv("CLIENT_ID")
