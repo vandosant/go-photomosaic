@@ -58,6 +58,7 @@ func FileCreateHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	histograms := make([]Histogram, 0)
+	imageUrls := make([]string, 0)
 
 	parent_histogram, err := generateHistogramFromFile("./tmp/testfile" + id + ".jpg")
 	if err != nil {
@@ -85,6 +86,7 @@ func FileCreateHandler(w http.ResponseWriter, r *http.Request) {
 			if out_of_bounds == false {
 				histograms = append(histograms, histogram)
 				postFile(media.Images.LowResolution.Url)
+				imageUrls = append(imageUrls, media.Images.LowResolution.Url)
 			}
 		}
 		instagramUrl = data.PaginationResponse.Pagination.NextUrl
