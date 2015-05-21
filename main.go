@@ -63,11 +63,6 @@ func FileCreateHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Printf("%-14s %6s %6s %6s %6s\n", "bin", "red", "green", "blue", "alpha")
-	for i, x := range parent_histogram {
-		fmt.Printf("hist: r - %d, g - %d, b - %d\n", x[0], x[1], x[2])
-		fmt.Printf("0x%04x-0x%04x: %6d %6d %6d %6d\n", i<<12, (i+1)<<12-1, x[0], x[1], x[2], x[3])
-	}
 
 	var data MediasResponse
 	instagramUrl := "https://api.instagram.com/v1/tags/nofilter/media/recent?client_id=" + os.Getenv("CLIENT_ID")
