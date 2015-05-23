@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"html/template"
 	"image"
 	_ "image/jpeg"
 	"io"
@@ -140,6 +141,10 @@ func FileCreateHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Println(w, "Across:")
 	fmt.Println(w, across)
 	fmt.Println(w, imageUrls)
+
+	w.WriteHeader(http.StatusCreated)
+	t, _ := template.ParseFiles("./public/image.html")
+	t.Execute(w, nil)
 }
 
 func getInstagramData(url string, count int, data *MediasResponse) error {
