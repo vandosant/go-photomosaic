@@ -113,17 +113,18 @@ func FileCreateHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		for _, media := range data.Medias {
-			fmt.Printf("Image: %v\n", media.Images.LowResolution.Url)
+			url := media.Images.Thumbnail.Url
+			fmt.Printf("Image: %v\n", url)
 
-			out_of_bounds, histogram, err := compareMedia(media.Images.LowResolution.Url, subImageHistogram)
+			out_of_bounds, histogram, err := compareMedia(url, subImageHistogram)
 			if err != nil {
 				log.Fatal(err)
 			}
 
 			if out_of_bounds == false {
 				histograms = append(histograms, histogram)
-				postFile(media.Images.LowResolution.Url)
-				imageUrls = append(imageUrls, media.Images.LowResolution.Url)
+				postFile(url)
+				imageUrls = append(imageUrls, url)
 			}
 		}
 		instagramUrl = data.PaginationResponse.Pagination.NextUrl
@@ -167,9 +168,11 @@ func compareMedia(url string, parent_histogram Histogram) (bool, Histogram, erro
 		return true, histogram, err
 	}
 
+	tolerance := 3000
+
 	for i, x := range histogram {
 		r, g, b := parent_histogram[i][0]-x[0], parent_histogram[i][1]-x[1], parent_histogram[i][2]-x[2]
-		if r > 12000 || g > 12000 || b > 12000 || r < -12000 || g < -12000 || b < -12000 {
+		if r > tolerance || g > tolerance || b > tolerance || r < -tolerance || g < -tolerance || b < -tolerance {
 			return true, histogram, nil
 			break
 		}
