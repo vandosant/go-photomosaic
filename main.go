@@ -5,16 +5,21 @@ import (
 	"encoding/json"
 	"fmt"
 	"image"
-	_ "image/jpeg"
+	"image/jpeg"
 	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
 	"path/filepath"
+	"bufio"
 )
 
 type Histogram [16][4]int
+
+type writer struct {
+  writer io.Writer
+}
 
 func main() {
 	port, err := setEnv()
@@ -62,11 +67,6 @@ func FileCreateHandler(w http.ResponseWriter, r *http.Request) {
 
 	parent_file_path := "./tmp/testfile" + id + ".jpg"
 
-	parent_histogram, err := generateHistogramFromFile(parent_file_path)
-	if err != nil {
-		log.Fatal(err)
-	}
-
 	reader, err := os.Open(parent_file_path)
 	if err != nil {
 		fmt.Println(w, "Unable to open file.")
@@ -78,8 +78,29 @@ func FileCreateHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		fmt.Println(w, "Unable to decode file.")
 	}
-	parent_bounds := m.Bounds()
-	fmt.Println(parent_bounds)
+
+	parentSubImage := m.(interface {
+		SubImage(r image.Rectangle) image.Image
+	}).SubImage(image.Rect(0, 0, 10, 10))
+
+	fmt.Printf("bounds %v\n", parentSubImage.Bounds())
+
+	id2 := random(32)
+	out2, err := os.OpenFile("./tmp/testfile"+id2+".jpg", os.O_WRONLY|os.O_CREATE, 0666)
+	if err != nil {
+		fmt.Println(w, "Unable to create file.")
+		return
+	}
+	wr := bufio.NewWriter(out2)
+	err = jpeg.Encode(wr, parentSubImage, nil)
+	if err != nil {
+		fmt.Println(w, err)
+	}
+
+	subImageHistogram, err := (generateHistogramFromImage(parentSubImage))
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	var data MediasResponse
 	instagramUrl := "https://api.instagram.com/v1/tags/nofilter/media/recent?client_id=" + os.Getenv("CLIENT_ID")
@@ -94,7 +115,7 @@ func FileCreateHandler(w http.ResponseWriter, r *http.Request) {
 		for _, media := range data.Medias {
 			fmt.Printf("Image: %v\n", media.Images.LowResolution.Url)
 
-			out_of_bounds, histogram, err := compareMedia(media.Images.LowResolution.Url, parent_histogram)
+			out_of_bounds, histogram, err := compareMedia(media.Images.LowResolution.Url, subImageHistogram)
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -202,6 +223,26 @@ func generateHistogramFromContents(file_content []byte) (Histogram, error) {
 	for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
 		for x := bounds.Min.X; x < bounds.Max.X; x++ {
 			r, g, b, a := m.At(x, y).RGBA()
+			// A color's RGBA method returns values in the range [0, 65535].
+			// Shifting by 12 reduces this to the range [0, 15].
+			histogram[r>>12][0]++
+			histogram[g>>12][1]++
+			histogram[b>>12][2]++
+			histogram[a>>12][3]++
+		}
+	}
+
+	return histogram, nil
+}
+
+func generateHistogramFromImage(img image.Image) (Histogram, error) {
+	histogram := Histogram{}
+
+	bounds := img.Bounds()
+
+	for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
+		for x := bounds.Min.X; x < bounds.Max.X; x++ {
+			r, g, b, a := img.At(x, y).RGBA()
 			// A color's RGBA method returns values in the range [0, 65535].
 			// Shifting by 12 reduces this to the range [0, 15].
 			histogram[r>>12][0]++
