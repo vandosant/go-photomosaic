@@ -5,14 +5,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"image"
-	"image/jpeg"
+	_ "image/jpeg"
 	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
 	"path/filepath"
-	"bufio"
 )
 
 type Histogram [16][4]int
@@ -62,7 +61,6 @@ func FileCreateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	histograms := make([]Histogram, 0)
 	imageUrls := make([]string, 0)
 
 	parent_file_path := "./tmp/testfile" + id + ".jpg"
@@ -79,56 +77,59 @@ func FileCreateHandler(w http.ResponseWriter, r *http.Request) {
 		fmt.Println(w, "Unable to decode file.")
 	}
 
-	parentSubImage := m.(interface {
-		SubImage(r image.Rectangle) image.Image
-	}).SubImage(image.Rect(0, 0, 10, 10))
+	parentBounds := m.Bounds()
 
-	fmt.Printf("bounds %v\n", parentSubImage.Bounds())
+	var data MediasResponse
+	instagramUrl := "https://api.instagram.com/v1/tags/nofilter/media/recent?client_id=" + os.Getenv("CLIENT_ID")
+	count := 50
 
-	id2 := random(32)
-	out2, err := os.OpenFile("./tmp/testfile"+id2+".jpg", os.O_WRONLY|os.O_CREATE, 0666)
-	if err != nil {
-		fmt.Println(w, "Unable to create file.")
-		return
-	}
-	wr := bufio.NewWriter(out2)
-	err = jpeg.Encode(wr, parentSubImage, nil)
-	if err != nil {
-		fmt.Println(w, err)
-	}
-
-	subImageHistogram, err := (generateHistogramFromImage(parentSubImage))
+	err = getInstagramData(instagramUrl, count, &data)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	var data MediasResponse
-	instagramUrl := "https://api.instagram.com/v1/tags/nofilter/media/recent?client_id=" + os.Getenv("CLIENT_ID")
-	count := 300
+	for len(imageUrls) < 10 {
+		startX := parentBounds.Min.X
+		startY := parentBounds.Min.Y
+		size := 40
 
-	for len(histograms) == 0 {
-		err = getInstagramData(instagramUrl, count, &data)
+		parentSubImage := m.(interface {
+			SubImage(r image.Rectangle) image.Image
+		}).SubImage(image.Rect(startX, startY, startX + size, startY + size))
+
+		subImageHistogram, err := (generateHistogramFromImage(parentSubImage))
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		for _, media := range data.Medias {
-			url := media.Images.Thumbnail.Url
-			fmt.Printf("Image: %v\n", url)
-
-			out_of_bounds, histogram, err := compareMedia(url, subImageHistogram)
+		// match this sub image
+		imageUrl := ""
+		for imageUrl == "" {
+			err = getInstagramData(instagramUrl, count, &data)
 			if err != nil {
 				log.Fatal(err)
 			}
 
-			if out_of_bounds == false {
-				histograms = append(histograms, histogram)
-				postFile(url)
-				imageUrls = append(imageUrls, url)
+			for _, media := range data.Medias {
+				url := media.Images.Thumbnail.Url
+
+				out_of_bounds, _, err := compareMedia(url, subImageHistogram)
+				if err != nil {
+					log.Fatal(err)
+				}
+
+				if out_of_bounds == false {
+					imageUrl = url
+				}
 			}
+			instagramUrl = data.PaginationResponse.Pagination.NextUrl
 		}
-		instagramUrl = data.PaginationResponse.Pagination.NextUrl
+		imageUrls = append(imageUrls, imageUrl)
+		// end matching sub image
+		startX = startX + size
+		startY = startY + size
 	}
+	fmt.Println(w, imageUrls)
 }
 
 func getInstagramData(url string, count int, data *MediasResponse) (error){
