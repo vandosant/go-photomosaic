@@ -21,6 +21,12 @@ type writer struct {
 	writer io.Writer
 }
 
+type ImagePage struct {
+	Urls      []string
+	ImageSize int
+	RowCount  int
+}
+
 func main() {
 	port, err := setEnv()
 	if err != nil {
@@ -138,13 +144,19 @@ func FileCreateHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		fmt.Println(len(imageUrls))
 	}
-	fmt.Println(w, "Across:")
-	fmt.Println(w, across)
-	fmt.Println(w, imageUrls)
+
+	ip := ImagePage{
+		Urls:      imageUrls,
+		ImageSize: size,
+		RowCount:  across,
+	}
 
 	w.WriteHeader(http.StatusCreated)
 	t, _ := template.ParseFiles("./public/image.html")
-	t.Execute(w, nil)
+	err = t.Execute(w, ip)
+	if err != nil {
+		fmt.Println(w, err)
+	}
 }
 
 func getInstagramData(url string, count int, data *MediasResponse) error {
