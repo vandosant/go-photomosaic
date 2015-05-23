@@ -17,7 +17,7 @@ import (
 type Histogram [16][4]int
 
 type writer struct {
-  writer io.Writer
+	writer io.Writer
 }
 
 func main() {
@@ -88,14 +88,19 @@ func FileCreateHandler(w http.ResponseWriter, r *http.Request) {
 		log.Fatal(err)
 	}
 
-	for len(imageUrls) < 10 {
-		startX := parentBounds.Min.X
-		startY := parentBounds.Min.Y
-		size := 40
+	startX := parentBounds.Min.X
+	startY := parentBounds.Min.Y
+	size := 80
+	maxX := parentBounds.Max.X
+	across := int(parentBounds.Max.X / size)
+	tall := int(parentBounds.Max.Y / size)
 
+	fmt.Println(w, across)
+	fmt.Println(w, across*tall)
+	for len(imageUrls) < across*tall {
 		parentSubImage := m.(interface {
 			SubImage(r image.Rectangle) image.Image
-		}).SubImage(image.Rect(startX, startY, startX + size, startY + size))
+		}).SubImage(image.Rect(startX, startY, startX+size, startY+size))
 
 		subImageHistogram, err := (generateHistogramFromImage(parentSubImage))
 		if err != nil {
@@ -105,11 +110,6 @@ func FileCreateHandler(w http.ResponseWriter, r *http.Request) {
 		// match this sub image
 		imageUrl := ""
 		for imageUrl == "" {
-			err = getInstagramData(instagramUrl, count, &data)
-			if err != nil {
-				log.Fatal(err)
-			}
-
 			for _, media := range data.Medias {
 				url := media.Images.Thumbnail.Url
 
@@ -120,19 +120,29 @@ func FileCreateHandler(w http.ResponseWriter, r *http.Request) {
 
 				if out_of_bounds == false {
 					imageUrl = url
+					break
 				}
 			}
-			instagramUrl = data.PaginationResponse.Pagination.NextUrl
+			err = getInstagramData(data.PaginationResponse.Pagination.NextUrl, count, &data)
+			if err != nil {
+				log.Fatal(err)
+			}
 		}
 		imageUrls = append(imageUrls, imageUrl)
 		// end matching sub image
 		startX = startX + size
-		startY = startY + size
+		if startX > maxX {
+			startX = 0
+			startY = startY + size
+		}
+		fmt.Println(len(imageUrls))
 	}
+	fmt.Println(w, "Across:")
+	fmt.Println(w, across)
 	fmt.Println(w, imageUrls)
 }
 
-func getInstagramData(url string, count int, data *MediasResponse) (error){
+func getInstagramData(url string, count int, data *MediasResponse) error {
 	res, err := http.Get(url + "&count=" + string(count))
 	if err != nil {
 		return err
@@ -169,7 +179,7 @@ func compareMedia(url string, parent_histogram Histogram) (bool, Histogram, erro
 		return true, histogram, err
 	}
 
-	tolerance := 3000
+	tolerance := 5000
 
 	for i, x := range histogram {
 		r, g, b := parent_histogram[i][0]-x[0], parent_histogram[i][1]-x[1], parent_histogram[i][2]-x[2]
