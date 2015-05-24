@@ -169,7 +169,7 @@ func getInstagramData(url string, count int, data *MediasResponse) error {
 	return nil
 }
 
-func compareMedia(url string, parent_histogram Histogram) (bool, Histogram, error) {
+func compareMedia(url string, parentHistogram Histogram) (bool, Histogram, error) {
 	client := &http.Client{}
 
 	req, err := http.NewRequest("GET", url, nil)
@@ -184,7 +184,7 @@ func compareMedia(url string, parent_histogram Histogram) (bool, Histogram, erro
 	}
 	defer res.Body.Close()
 
-	file_content, err := ioutil.ReadAll(res.Body)
+	fileContent, err := ioutil.ReadAll(res.Body)
 	if err != nil {
 		return true, Histogram{}, err
 	}
@@ -192,15 +192,15 @@ func compareMedia(url string, parent_histogram Histogram) (bool, Histogram, erro
 	res.Close = true
 	res.Header.Set("Connection", "close")
 
-	histogram, err := generateHistogramFromContents(file_content)
+	histogram, err := generateHistogramFromContents(fileContent)
 	if err != nil {
 		return true, histogram, err
 	}
 
-	tolerance := 3000
+	tolerance := 2600
 
 	for i, x := range histogram {
-		r, g, b := parent_histogram[i][0]-x[0], parent_histogram[i][1]-x[1], parent_histogram[i][2]-x[2]
+		r, g, b := parentHistogram[i][0]-x[0], parentHistogram[i][1]-x[1], parentHistogram[i][2]-x[2]
 		if r > tolerance || g > tolerance || b > tolerance || r < -tolerance || g < -tolerance || b < -tolerance {
 			return true, histogram, nil
 			break
@@ -210,10 +210,10 @@ func compareMedia(url string, parent_histogram Histogram) (bool, Histogram, erro
 	return false, histogram, nil
 }
 
-func generateHistogramFromFile(file_path string) (Histogram, error) {
+func generateHistogramFromFile(filePath string) (Histogram, error) {
 	histogram := Histogram{}
 
-	reader, err := os.Open(file_path)
+	reader, err := os.Open(filePath)
 	if err != nil {
 		return histogram, err
 	}
@@ -229,8 +229,6 @@ func generateHistogramFromFile(file_path string) (Histogram, error) {
 	for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
 		for x := bounds.Min.X; x < bounds.Max.X; x++ {
 			r, g, b, a := m.At(x, y).RGBA()
-			// A color's RGBA method returns values in the range [0, 65535].
-			// Shifting by 12 reduces this to the range [0, 15].
 			histogram[r>>12][0]++
 			histogram[g>>12][1]++
 			histogram[b>>12][2]++
@@ -241,10 +239,10 @@ func generateHistogramFromFile(file_path string) (Histogram, error) {
 	return histogram, nil
 }
 
-func generateHistogramFromContents(file_content []byte) (Histogram, error) {
+func generateHistogramFromContents(fileContent []byte) (Histogram, error) {
 	histogram := Histogram{}
 
-	reader := bytes.NewReader(file_content)
+	reader := bytes.NewReader(fileContent)
 
 	m, _, err := image.Decode(reader)
 	if err != nil {
@@ -255,8 +253,6 @@ func generateHistogramFromContents(file_content []byte) (Histogram, error) {
 	for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
 		for x := bounds.Min.X; x < bounds.Max.X; x++ {
 			r, g, b, a := m.At(x, y).RGBA()
-			// A color's RGBA method returns values in the range [0, 65535].
-			// Shifting by 12 reduces this to the range [0, 15].
 			histogram[r>>12][0]++
 			histogram[g>>12][1]++
 			histogram[b>>12][2]++
@@ -288,15 +284,15 @@ func generateHistogramFromImage(img image.Image) (Histogram, error) {
 }
 
 func postFile(targetUrl string) (string, error) {
-	type_ext := filepath.Ext(targetUrl)
+	typeExt := filepath.Ext(targetUrl)
 
 	dir := "./tmp"
-	file_name := random(20) + type_ext
-	file_path := dir + "/" + file_name
+	fileName := random(20) + typeExt
+	filePath := dir + "/" + fileName
 
 	os.Mkdir(dir, 0666)
 
-	file, err := os.Create(file_path)
+	file, err := os.Create(filePath)
 	if err != nil {
 		return "", err
 	}
@@ -308,16 +304,16 @@ func postFile(targetUrl string) (string, error) {
 	}
 	defer res.Body.Close()
 
-	file_content, err := ioutil.ReadAll(res.Body)
+	fileContent, err := ioutil.ReadAll(res.Body)
 	if err != nil {
 		return "", err
 	}
 
-	i, err := file.Write(file_content)
+	i, err := file.Write(fileContent)
 	if err != nil {
 		return "", err
 	}
 	fmt.Print(string(i))
 
-	return file_path, nil
+	return filePath, nil
 }
