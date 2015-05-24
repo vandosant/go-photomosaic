@@ -14,6 +14,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"sort"
 )
 
 type Histogram [16][3]int
@@ -44,6 +45,7 @@ func IndexHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func FileCreateHandler(w http.ResponseWriter, r *http.Request) {
+	indexedUrls := make(map[int]string)
 	imageUrls := make([]string, 0)
 
 	r.ParseMultipartForm(32 << 20)
@@ -116,15 +118,25 @@ func FileCreateHandler(w http.ResponseWriter, r *http.Request) {
 				}
 				data = newData
 			}
-			imageUrls = append(imageUrls, imageUrl)
-			fmt.Println(len(imageUrls))
+			indexedUrls[i] = imageUrl
+			fmt.Println(len(indexedUrls))
 		}(i)
 		startX = startX + size
 		if startX > maxX {
 			startX = 0
 			startY = startY + size
 		}
-		fmt.Println(len(imageUrls))
+		fmt.Println(len(indexedUrls))
+	}
+
+	var keys []int
+  for k, _ := range indexedUrls {
+    keys = append(keys, k)
+  }
+	sort.Ints(keys)
+
+	for _, k := range keys {
+		imageUrls = append(imageUrls, indexedUrls[k])
 	}
 
 	ip := ImagePage{
