@@ -68,7 +68,7 @@ func FileCreateHandler(w http.ResponseWriter, r *http.Request) {
 
 	startX := parentBounds.Min.X
 	startY := parentBounds.Min.Y
-	size := 10
+	size := 20
 	maxX := parentBounds.Max.X
 	across := int(parentBounds.Max.X / size)
 	tall := int(parentBounds.Max.Y / size)
@@ -83,7 +83,8 @@ func FileCreateHandler(w http.ResponseWriter, r *http.Request) {
 			log.Fatal(err)
 		}
 
-		go func() {
+		go func(i int) {
+			var newData MediasResponse
 			parentSubImage := m.(interface {
 				SubImage(r image.Rectangle) image.Image
 			}).SubImage(image.Rect(startX, startY, startX+size, startY+size))
@@ -109,7 +110,6 @@ func FileCreateHandler(w http.ResponseWriter, r *http.Request) {
 						break
 					}
 				}
-				var newData MediasResponse
 				err = getInstagramData(data.PaginationResponse.Pagination.NextUrl, &newData)
 				if err != nil {
 					log.Fatal(err)
@@ -118,7 +118,7 @@ func FileCreateHandler(w http.ResponseWriter, r *http.Request) {
 			}
 			imageUrls = append(imageUrls, imageUrl)
 			fmt.Println(len(imageUrls))
-		}()
+		}(i)
 		startX = startX + size
 		if startX > maxX {
 			startX = 0
@@ -144,7 +144,7 @@ func FileCreateHandler(w http.ResponseWriter, r *http.Request) {
 func getInstagramData(url string, data *MediasResponse) error {
 	client := &http.Client{}
 
-	req, err := http.NewRequest("GET", url, nil)
+	req, err := http.NewRequest("GET", url + "&count=100", nil)
 	if err != nil {
 		return err
 	}
@@ -199,7 +199,7 @@ func compareMedia(url string, parentHistogram Histogram, parentBounds image.Rect
 		return true, histogram, err
 	}
 
-	tolerance := 2300
+	tolerance := 1600
 
 	parentResolution := parentBounds.Max.X * parentBounds.Max.Y
 	compareImageRes := compareBounds.Max.X * compareBounds.Max.Y
