@@ -144,7 +144,7 @@ func FileCreateHandler(w http.ResponseWriter, r *http.Request) {
 func getInstagramData(url string, data *MediasResponse) error {
 	client := &http.Client{}
 
-	req, err := http.NewRequest("GET", url+"&count=100", nil)
+	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return err
 	}
