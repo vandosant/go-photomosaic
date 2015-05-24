@@ -12,7 +12,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"path/filepath"
 )
 
 type Histogram [16][4]int
@@ -210,35 +209,6 @@ func compareMedia(url string, parentHistogram Histogram) (bool, Histogram, error
 	return false, histogram, nil
 }
 
-func generateHistogramFromFile(filePath string) (Histogram, error) {
-	histogram := Histogram{}
-
-	reader, err := os.Open(filePath)
-	if err != nil {
-		return histogram, err
-	}
-
-	defer reader.Close()
-
-	m, _, err := image.Decode(reader)
-	if err != nil {
-		return histogram, err
-	}
-	bounds := m.Bounds()
-
-	for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
-		for x := bounds.Min.X; x < bounds.Max.X; x++ {
-			r, g, b, a := m.At(x, y).RGBA()
-			histogram[r>>12][0]++
-			histogram[g>>12][1]++
-			histogram[b>>12][2]++
-			histogram[a>>12][3]++
-		}
-	}
-
-	return histogram, nil
-}
-
 func generateHistogramFromContents(fileContent []byte) (Histogram, error) {
 	histogram := Histogram{}
 
@@ -281,39 +251,4 @@ func generateHistogramFromImage(img image.Image) (Histogram, error) {
 	}
 
 	return histogram, nil
-}
-
-func postFile(targetUrl string) (string, error) {
-	typeExt := filepath.Ext(targetUrl)
-
-	dir := "./tmp"
-	fileName := random(20) + typeExt
-	filePath := dir + "/" + fileName
-
-	os.Mkdir(dir, 0666)
-
-	file, err := os.Create(filePath)
-	if err != nil {
-		return "", err
-	}
-	defer file.Close()
-
-	res, err := http.Get(targetUrl)
-	if err != nil {
-		return "", err
-	}
-	defer res.Body.Close()
-
-	fileContent, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		return "", err
-	}
-
-	i, err := file.Write(fileContent)
-	if err != nil {
-		return "", err
-	}
-	fmt.Print(string(i))
-
-	return filePath, nil
 }
