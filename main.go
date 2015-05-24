@@ -43,41 +43,20 @@ func IndexHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func FileCreateHandler(w http.ResponseWriter, r *http.Request) {
+	imageUrls := make([]string, 0)
+
 	r.ParseMultipartForm(32 << 20)
 	file, _, err := r.FormFile("file")
 	if err != nil {
-		fmt.Println(w, err)
-		return
+		fmt.Fprint(w, "Failed to read FormFile.")
 	}
-
-	defer file.Close()
-
-	id := random(32)
-
-	out, err := os.OpenFile("./tmp/testfile"+id+".jpg", os.O_WRONLY|os.O_CREATE, 0666)
+	fileContents, err := ioutil.ReadAll(file)
 	if err != nil {
-		fmt.Println(w, "Unable to create file.")
-		return
+		fmt.Fprint(w, "Failed to read file contents.")
 	}
+	r.Body.Close()
 
-	defer out.Close()
-
-	_, err = io.Copy(out, file)
-	if err != nil {
-		fmt.Println(w, err)
-		return
-	}
-
-	imageUrls := make([]string, 0)
-
-	parent_file_path := "./tmp/testfile" + id + ".jpg"
-
-	reader, err := os.Open(parent_file_path)
-	if err != nil {
-		fmt.Println(w, "Unable to open file.")
-	}
-
-	defer reader.Close()
+	reader := bytes.NewReader(fileContents)
 
 	m, _, err := image.Decode(reader)
 	if err != nil {
