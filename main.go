@@ -65,6 +65,16 @@ func FileCreateHandler(w http.ResponseWriter, r *http.Request) {
 
 	parentBounds := m.Bounds()
 
+	startX := parentBounds.Min.X
+	startY := parentBounds.Min.Y
+	size := 40
+	maxX := parentBounds.Max.X
+	across := int(parentBounds.Max.X / size)
+	tall := int(parentBounds.Max.Y / size)
+
+	fmt.Println(w, across)
+	fmt.Println(w, across*tall)
+
 	var data MediasResponse
 	instagramUrl := "https://api.instagram.com/v1/tags/nofilter/media/recent?client_id=" + os.Getenv("CLIENT_ID")
 	count := 100
@@ -74,15 +84,6 @@ func FileCreateHandler(w http.ResponseWriter, r *http.Request) {
 		log.Fatal(err)
 	}
 
-	startX := parentBounds.Min.X
-	startY := parentBounds.Min.Y
-	size := 20
-	maxX := parentBounds.Max.X
-	across := int(parentBounds.Max.X / size)
-	tall := int(parentBounds.Max.Y / size)
-
-	fmt.Println(w, across)
-	fmt.Println(w, across*tall)
 	for len(imageUrls) < across*tall {
 		parentSubImage := m.(interface {
 			SubImage(r image.Rectangle) image.Image
@@ -93,7 +94,6 @@ func FileCreateHandler(w http.ResponseWriter, r *http.Request) {
 			log.Fatal(err)
 		}
 
-		// match this sub image
 		imageUrl := ""
 		for imageUrl == "" {
 			for _, media := range data.Medias {
@@ -109,13 +109,14 @@ func FileCreateHandler(w http.ResponseWriter, r *http.Request) {
 					break
 				}
 			}
-			err = getInstagramData(data.PaginationResponse.Pagination.NextUrl, count, &data)
+			var newData MediasResponse
+			err = getInstagramData(data.PaginationResponse.Pagination.NextUrl, count, &newData)
 			if err != nil {
 				log.Fatal(err)
 			}
+			data = newData
 		}
 		imageUrls = append(imageUrls, imageUrl)
-
 		startX = startX + size
 		if startX > maxX {
 			startX = 0
@@ -139,16 +140,26 @@ func FileCreateHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func getInstagramData(url string, count int, data *MediasResponse) error {
-	res, err := http.Get(url + "&count=" + string(count))
+	client := &http.Client{}
+
+	req, err := http.NewRequest("GET", url + "&count=" + string(count), nil)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Connection", "close")
+
+	res, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer res.Body.Close()
+
+	response, err := ioutil.ReadAll(res.Body)
 	if err != nil {
 		return err
 	}
 
-	response, err := ioutil.ReadAll(res.Body)
-	res.Body.Close()
-	if err != nil {
-		return err
-	}
+	res.Close = true
 
 	err = json.Unmarshal(response, &data)
 	if err != nil {
@@ -159,7 +170,15 @@ func getInstagramData(url string, count int, data *MediasResponse) error {
 }
 
 func compareMedia(url string, parent_histogram Histogram) (bool, Histogram, error) {
-	res, err := http.Get(url)
+	client := &http.Client{}
+
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return true, Histogram{}, err
+	}
+	req.Header.Set("Connection", "close")
+
+	res, err := client.Do(req)
 	if err != nil {
 		return true, Histogram{}, err
 	}
@@ -169,6 +188,9 @@ func compareMedia(url string, parent_histogram Histogram) (bool, Histogram, erro
 	if err != nil {
 		return true, Histogram{}, err
 	}
+
+	res.Close = true
+	res.Header.Set("Connection", "close")
 
 	histogram, err := generateHistogramFromContents(file_content)
 	if err != nil {
