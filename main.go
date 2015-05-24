@@ -7,6 +7,8 @@ import (
 	"html/template"
 	"image"
 	_ "image/jpeg"
+	_ "image/png"
+	_ "image/gif"
 	"io"
 	"io/ioutil"
 	"log"
