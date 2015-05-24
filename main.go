@@ -68,7 +68,7 @@ func FileCreateHandler(w http.ResponseWriter, r *http.Request) {
 
 	startX := parentBounds.Min.X
 	startY := parentBounds.Min.Y
-	size := 40
+	size := 20
 	maxX := parentBounds.Max.X
 	across := int(parentBounds.Max.X / size)
 	tall := int(parentBounds.Max.Y / size)
@@ -77,8 +77,8 @@ func FileCreateHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Println(w, across*tall)
 
 	var data MediasResponse
-	instagramUrl := "https://api.instagram.com/v1/tags/nofilter/media/recent?client_id=" + os.Getenv("CLIENT_ID")
-	count := 100
+	instagramUrl := "https://api.instagram.com/v1/media/recent?client_id=" + os.Getenv("CLIENT_ID")
+	count := 200
 
 	err = getInstagramData(instagramUrl, count, &data)
 	if err != nil {
@@ -198,7 +198,7 @@ func compareMedia(url string, parentHistogram Histogram) (bool, Histogram, error
 		return true, histogram, err
 	}
 
-	tolerance := 2600
+	tolerance := 2500
 
 	for i, x := range histogram {
 		r, g, b := parentHistogram[i][0]-x[0], parentHistogram[i][1]-x[1], parentHistogram[i][2]-x[2]
