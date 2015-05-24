@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"html/template"
 	"image"
+	_ "image/gif"
 	_ "image/jpeg"
 	_ "image/png"
-	_ "image/gif"
 	"io"
 	"io/ioutil"
 	"log"
@@ -16,7 +16,7 @@ import (
 	"os"
 )
 
-type Histogram [16][4]int
+type Histogram [16][3]int
 
 type writer struct {
 	writer io.Writer
@@ -68,56 +68,57 @@ func FileCreateHandler(w http.ResponseWriter, r *http.Request) {
 
 	startX := parentBounds.Min.X
 	startY := parentBounds.Min.Y
-	size := 20
+	size := 10
 	maxX := parentBounds.Max.X
 	across := int(parentBounds.Max.X / size)
 	tall := int(parentBounds.Max.Y / size)
 
-	fmt.Println(w, across)
-	fmt.Println(w, across*tall)
+	fmt.Println(across * tall)
+	for i := 0; i < across*tall; i++ {
+		var data MediasResponse
+		instagramUrl := "https://api.instagram.com/v1/tags/nofilter/media/recent?client_id=" + os.Getenv("CLIENT_ID")
 
-	var data MediasResponse
-	instagramUrl := "https://api.instagram.com/v1/media/recent?client_id=" + os.Getenv("CLIENT_ID")
-	count := 200
-
-	err = getInstagramData(instagramUrl, count, &data)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	for len(imageUrls) < across*tall {
-		parentSubImage := m.(interface {
-			SubImage(r image.Rectangle) image.Image
-		}).SubImage(image.Rect(startX, startY, startX+size, startY+size))
-
-		subImageHistogram, err := (generateHistogramFromImage(parentSubImage))
+		err = getInstagramData(instagramUrl, &data)
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		imageUrl := ""
-		for imageUrl == "" {
-			for _, media := range data.Medias {
-				url := media.Images.Thumbnail.Url
+		go func() {
+			parentSubImage := m.(interface {
+				SubImage(r image.Rectangle) image.Image
+			}).SubImage(image.Rect(startX, startY, startX+size, startY+size))
+			parentBounds := parentSubImage.Bounds()
 
-				out_of_bounds, _, err := compareMedia(url, subImageHistogram)
-				if err != nil {
-					log.Fatal(err)
-				}
-
-				if out_of_bounds == false {
-					imageUrl = url
-					break
-				}
-			}
-			var newData MediasResponse
-			err = getInstagramData(data.PaginationResponse.Pagination.NextUrl, count, &newData)
+			subImageHistogram, err := (generateHistogramFromImage(parentSubImage))
 			if err != nil {
 				log.Fatal(err)
 			}
-			data = newData
-		}
-		imageUrls = append(imageUrls, imageUrl)
+
+			imageUrl := ""
+			for imageUrl == "" {
+				for _, media := range data.Medias {
+					url := media.Images.Thumbnail.Url
+
+					out_of_bounds, _, err := compareMedia(url, subImageHistogram, parentBounds)
+					if err != nil {
+						log.Fatal(err)
+					}
+
+					if out_of_bounds == false {
+						imageUrl = url
+						break
+					}
+				}
+				var newData MediasResponse
+				err = getInstagramData(data.PaginationResponse.Pagination.NextUrl, &newData)
+				if err != nil {
+					log.Fatal(err)
+				}
+				data = newData
+			}
+			imageUrls = append(imageUrls, imageUrl)
+			fmt.Println(len(imageUrls))
+		}()
 		startX = startX + size
 		if startX > maxX {
 			startX = 0
@@ -140,10 +141,10 @@ func FileCreateHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func getInstagramData(url string, count int, data *MediasResponse) error {
+func getInstagramData(url string, data *MediasResponse) error {
 	client := &http.Client{}
 
-	req, err := http.NewRequest("GET", url + "&count=" + string(count), nil)
+	req, err := http.NewRequest("GET", url+"&count=100", nil)
 	if err != nil {
 		return err
 	}
@@ -170,7 +171,7 @@ func getInstagramData(url string, count int, data *MediasResponse) error {
 	return nil
 }
 
-func compareMedia(url string, parentHistogram Histogram) (bool, Histogram, error) {
+func compareMedia(url string, parentHistogram Histogram, parentBounds image.Rectangle) (bool, Histogram, error) {
 	client := &http.Client{}
 
 	req, err := http.NewRequest("GET", url, nil)
@@ -193,15 +194,25 @@ func compareMedia(url string, parentHistogram Histogram) (bool, Histogram, error
 	res.Close = true
 	res.Header.Set("Connection", "close")
 
-	histogram, err := generateHistogramFromContents(fileContent)
+	histogram, compareBounds, err := generateHistogramFromContents(fileContent)
 	if err != nil {
 		return true, histogram, err
 	}
 
-	tolerance := 2500
+	tolerance := 2300
 
+	parentResolution := parentBounds.Max.X * parentBounds.Max.Y
+	compareImageRes := compareBounds.Max.X * compareBounds.Max.Y
+	if parentResolution == 0 {
+		parentResolution = 1
+	}
+	if compareImageRes == 0 {
+		compareImageRes = 1
+	}
 	for i, x := range histogram {
-		r, g, b := parentHistogram[i][0]-x[0], parentHistogram[i][1]-x[1], parentHistogram[i][2]-x[2]
+		r, g, b := (parentHistogram[i][0]/parentResolution)-(x[0]/compareImageRes),
+			(parentHistogram[i][1]/parentResolution)-(x[1]/compareImageRes),
+			(parentHistogram[i][2]/parentResolution)-(x[2]/compareImageRes)
 		if r > tolerance || g > tolerance || b > tolerance || r < -tolerance || g < -tolerance || b < -tolerance {
 			return true, histogram, nil
 			break
@@ -211,28 +222,26 @@ func compareMedia(url string, parentHistogram Histogram) (bool, Histogram, error
 	return false, histogram, nil
 }
 
-func generateHistogramFromContents(fileContent []byte) (Histogram, error) {
+func generateHistogramFromContents(fileContent []byte) (Histogram, image.Rectangle, error) {
 	histogram := Histogram{}
 
 	reader := bytes.NewReader(fileContent)
 
 	m, _, err := image.Decode(reader)
 	if err != nil {
-		return histogram, err
+		return histogram, image.Rectangle{}, err
 	}
 	bounds := m.Bounds()
 
 	for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
 		for x := bounds.Min.X; x < bounds.Max.X; x++ {
-			r, g, b, a := m.At(x, y).RGBA()
+			r, g, b, _ := m.At(x, y).RGBA()
 			histogram[r>>12][0]++
 			histogram[g>>12][1]++
 			histogram[b>>12][2]++
-			histogram[a>>12][3]++
 		}
 	}
-
-	return histogram, nil
+	return histogram, bounds, nil
 }
 
 func generateHistogramFromImage(img image.Image) (Histogram, error) {
@@ -242,15 +251,11 @@ func generateHistogramFromImage(img image.Image) (Histogram, error) {
 
 	for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
 		for x := bounds.Min.X; x < bounds.Max.X; x++ {
-			r, g, b, a := img.At(x, y).RGBA()
-			// A color's RGBA method returns values in the range [0, 65535].
-			// Shifting by 12 reduces this to the range [0, 15].
+			r, g, b, _ := img.At(x, y).RGBA()
 			histogram[r>>12][0]++
 			histogram[g>>12][1]++
 			histogram[b>>12][2]++
-			histogram[a>>12][3]++
 		}
 	}
-
 	return histogram, nil
 }
