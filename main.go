@@ -71,6 +71,12 @@ func FileCreateHandler(w http.ResponseWriter, r *http.Request) {
 	startX := parentBounds.Min.X
 	startY := parentBounds.Min.Y
 	size := 20
+	for (parentBounds.Max.X % size != 0) {
+		size = size + 1
+		fmt.Println(w, size)
+	}
+	fmt.Println(w, "final size")
+	fmt.Println(w, size)
 	maxX := parentBounds.Max.X
 	across := int(parentBounds.Max.X / size)
 	tall := int(parentBounds.Max.Y / size)
