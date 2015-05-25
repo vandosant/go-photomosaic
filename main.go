@@ -85,8 +85,9 @@ func FileCreateHandler(w http.ResponseWriter, r *http.Request) {
 			log.Fatal(err)
 		}
 
-		go func(i int) {
-			var newData MediasResponse
+		go func(d MediasResponse) {
+			nextUrl := d.PaginationResponse.Pagination.NextUrl
+
 			parentSubImage := m.(interface {
 				SubImage(r image.Rectangle) image.Image
 			}).SubImage(image.Rect(startX, startY, startX+size, startY+size))
@@ -99,7 +100,7 @@ func FileCreateHandler(w http.ResponseWriter, r *http.Request) {
 
 			imageUrl := ""
 			for imageUrl == "" {
-				for _, media := range data.Medias {
+				for _, media := range d.Medias {
 					url := media.Images.Thumbnail.Url
 
 					out_of_bounds, _, err := compareMedia(url, subImageHistogram, parentBounds)
@@ -112,15 +113,14 @@ func FileCreateHandler(w http.ResponseWriter, r *http.Request) {
 						break
 					}
 				}
-				err = getInstagramData(data.PaginationResponse.Pagination.NextUrl, &newData)
+				err = getInstagramData(nextUrl, &d)
 				if err != nil {
 					log.Fatal(err)
 				}
-				data = newData
 			}
 			indexedUrls[i] = imageUrl
 			fmt.Println(len(indexedUrls))
-		}(i)
+		}(data)
 		startX = startX + size
 		if startX > maxX {
 			startX = 0
