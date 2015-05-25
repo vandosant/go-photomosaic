@@ -73,7 +73,6 @@ func FileCreateHandler(w http.ResponseWriter, r *http.Request) {
 	size := 30
 	for (parentBounds.Max.X % size != 0) {
 		size = size + 1
-		fmt.Println(w, size)
 	}
 
 	maxX := parentBounds.Max.X
