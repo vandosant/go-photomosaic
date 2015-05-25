@@ -217,10 +217,10 @@ func compareMedia(url string, parentHistogram Histogram, parentBounds image.Rect
 		return true, histogram, err
 	}
 
-	tolerance := 1600
+	tolerance := 1
 
-	parentResolution := parentBounds.Max.X * parentBounds.Max.Y
-	compareImageRes := compareBounds.Max.X * compareBounds.Max.Y
+	parentResolution := (parentBounds.Max.X * parentBounds.Max.Y) / 16
+	compareImageRes := (compareBounds.Max.X * compareBounds.Max.Y) / 16
 	if parentResolution == 0 {
 		parentResolution = 1
 	}
