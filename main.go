@@ -103,17 +103,17 @@ func FileCreateHandler(w http.ResponseWriter, r *http.Request) {
 			}
 
 			imageUrl := ""
-			out_of_bounds := true
-			for imageUrl == "" && out_of_bounds {
+			outOfBounds := true
+			for imageUrl == "" && outOfBounds {
 				for _, media := range d.Medias {
 					url := media.Images.Thumbnail.Url
 
-					out_of_bounds, _, err := compareMedia(url, subImageHistogram, parentBounds)
+					outOfBounds, _, err := compareMedia(url, subImageHistogram, parentBounds)
 					if err != nil {
 						log.Fatal(err)
 					}
 
-					if out_of_bounds == false {
+					if outOfBounds == false {
 						imageUrl = url
 						break
 					}
