@@ -103,7 +103,8 @@ func FileCreateHandler(w http.ResponseWriter, r *http.Request) {
 			}
 
 			imageUrl := ""
-			for imageUrl == "" {
+			out_of_bounds := true
+			for imageUrl == "" && out_of_bounds {
 				for _, media := range d.Medias {
 					url := media.Images.Thumbnail.Url
 
@@ -117,9 +118,11 @@ func FileCreateHandler(w http.ResponseWriter, r *http.Request) {
 						break
 					}
 				}
-				err = getInstagramData(nextUrl, &d)
-				if err != nil {
-					log.Fatal(err)
+				if imageUrl == "" {
+					err = getInstagramData(nextUrl, &d)
+					if err != nil {
+						log.Fatal(err)
+					}
 				}
 			}
 			indexedUrls[i] = imageUrl
