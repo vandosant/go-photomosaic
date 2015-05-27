@@ -94,7 +94,7 @@ func FileCreateHandler(w http.ResponseWriter, r *http.Request) {
 	across := int(parentBounds.Max.X / size)
 	tall := int(parentBounds.Max.Y / size)
 
-	wg.Add((across * tall) - 1)
+	wg.Add(across * tall)
 	fmt.Println(across * tall)
 	for i := 0; i < across*tall; i++ {
 		var data MediasResponse
