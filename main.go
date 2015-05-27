@@ -15,6 +15,7 @@ import (
 	"net/http"
 	"os"
 	"sort"
+	"sync"
 )
 
 type Histogram [16][3]int
@@ -27,6 +28,20 @@ type ImagePage struct {
 	Urls      []string
 	ImageSize int
 	RowCount  int
+}
+
+type ImageUrls struct {
+	sync.Mutex
+	Urls []ImageUrl
+}
+
+func (a ImageUrls) Len() int           { return len(a.Urls) }
+func (a ImageUrls) Swap(i, j int)      { a.Urls[i], a.Urls[j] = a.Urls[j], a.Urls[i] }
+func (a ImageUrls) Less(i, j int) bool { return a.Urls[i].Index < a.Urls[j].Index }
+
+type ImageUrl struct {
+	Index int
+	Url string
 }
 
 func main() {
@@ -45,8 +60,8 @@ func IndexHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func FileCreateHandler(w http.ResponseWriter, r *http.Request) {
-	indexedUrls := make(map[int]string)
-	imageUrls := make([]string, 0)
+	var wg sync.WaitGroup
+	imageUrls := ImageUrls{}
 
 	r.ParseMultipartForm(32 << 20)
 	file, _, err := r.FormFile("file")
@@ -79,6 +94,7 @@ func FileCreateHandler(w http.ResponseWriter, r *http.Request) {
 	across := int(parentBounds.Max.X / size)
 	tall := int(parentBounds.Max.Y / size)
 
+	wg.Add((across * tall) - 1)
 	fmt.Println(across * tall)
 	for i := 0; i < across*tall; i++ {
 		var data MediasResponse
@@ -89,7 +105,7 @@ func FileCreateHandler(w http.ResponseWriter, r *http.Request) {
 			log.Fatal(err)
 		}
 
-		go func(d MediasResponse) {
+		go func(d MediasResponse, i int) {
 			nextUrl := d.PaginationResponse.Pagination.NextUrl
 
 			parentSubImage := m.(interface {
@@ -125,29 +141,29 @@ func FileCreateHandler(w http.ResponseWriter, r *http.Request) {
 					}
 				}
 			}
-			indexedUrls[i] = imageUrl
-			fmt.Println(len(indexedUrls))
-		}(data)
+			imageUrls.Lock()
+			imageUrls.Urls = append(imageUrls.Urls, ImageUrl{Index: i, Url: imageUrl})
+			fmt.Println(len(imageUrls.Urls))
+			imageUrls.Unlock()
+			wg.Done()
+		}(data, i)
 		startX = startX + size
 		if startX > maxX {
 			startX = 0
 			startY = startY + size
 		}
-		fmt.Println(len(indexedUrls))
 	}
 
-	var keys []int
-  for k, _ := range indexedUrls {
-    keys = append(keys, k)
-  }
-	sort.Ints(keys)
+	wg.Wait()
 
-	for _, k := range keys {
-		imageUrls = append(imageUrls, indexedUrls[k])
+	sort.Sort(ImageUrls(imageUrls))
+	var urls []string
+	for _, v := range imageUrls.Urls {
+		urls = append(urls, v.Url)
 	}
 
 	ip := ImagePage{
-		Urls:      imageUrls,
+		Urls:      urls,
 		ImageSize: size,
 		RowCount:  across,
 	}
@@ -218,7 +234,7 @@ func compareMedia(url string, parentHistogram Histogram, parentBounds image.Rect
 		return true, histogram, err
 	}
 
-	tolerance := 450
+	tolerance := 650
 
 	parentResolution := (parentBounds.Max.X * parentBounds.Max.Y) >> 12
 	compareImageRes := (compareBounds.Max.X * compareBounds.Max.Y) >> 12
