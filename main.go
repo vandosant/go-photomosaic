@@ -145,7 +145,7 @@ func FileCreateHandler(w http.ResponseWriter, r *http.Request) {
 			imageUrls.Urls = append(imageUrls.Urls, ImageUrl{Index: i, Url: imageUrl})
 			fmt.Println(len(imageUrls.Urls))
 			imageUrls.Unlock()
-			wg.Done()
+			defer wg.Done()
 		}(data, i)
 		startX = startX + size
 		if startX > maxX {
