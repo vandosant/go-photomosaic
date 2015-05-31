@@ -197,6 +197,7 @@ func getInstagramData(url string, data *MediasResponse) error {
 	}
 
 	res.Close = true
+	res.Header.Set("Connection", "close")
 
 	err = json.Unmarshal(response, &data)
 	if err != nil {
