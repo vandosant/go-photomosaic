@@ -95,14 +95,14 @@ func FileCreateHandler(w http.ResponseWriter, r *http.Request) {
 	tall := int(parentBounds.Max.Y / size)
 
 	fmt.Println(across * tall)
-	for i := 0; i <= across*tall; i++ {
+	for i := 0; i < across*tall; i++ {
 		wg.Add(1)
 		var data MediasResponse
 		instagramUrl := "https://api.instagram.com/v1/tags/nofilter/media/recent?client_id=" + os.Getenv("CLIENT_ID")
 
 		err = getInstagramData(instagramUrl, &data)
 		if err != nil {
-			log.Fatal(err)
+			panic(err)
 		}
 
 		go func(d MediasResponse, i int) {
