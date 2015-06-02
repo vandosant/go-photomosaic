@@ -41,7 +41,7 @@ func (a ImageUrls) Less(i, j int) bool { return a.Urls[i].Index < a.Urls[j].Inde
 
 type ImageUrl struct {
 	Index int
-	Url string
+	Url   string
 }
 
 func main() {
@@ -86,7 +86,7 @@ func FileCreateHandler(w http.ResponseWriter, r *http.Request) {
 	startX := parentBounds.Min.X
 	startY := parentBounds.Min.Y
 	size := 30
-	for (parentBounds.Max.X % size != 0) {
+	for parentBounds.Max.X%size != 0 {
 		size = size + 1
 	}
 
@@ -179,7 +179,7 @@ func FileCreateHandler(w http.ResponseWriter, r *http.Request) {
 func getInstagramData(url string, data *MediasResponse) error {
 	client := &http.Client{}
 
-	req, err := http.NewRequest("GET", url + "&count=100", nil)
+	req, err := http.NewRequest("GET", url+"&count=100", nil)
 	if err != nil {
 		return err
 	}
