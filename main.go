@@ -115,7 +115,7 @@ func FileCreateHandler(w http.ResponseWriter, r *http.Request) {
 
 			subImageHistogram, err := (generateHistogramFromImage(parentSubImage))
 			if err != nil {
-				log.Fatal(err)
+				panic(err)
 			}
 
 			imageUrl := ""
@@ -126,7 +126,7 @@ func FileCreateHandler(w http.ResponseWriter, r *http.Request) {
 
 					outOfBounds, _, err := compareMedia(url, subImageHistogram, parentBounds)
 					if err != nil {
-						log.Fatal(err)
+						panic(err)
 					}
 
 					if outOfBounds == false {
@@ -137,7 +137,7 @@ func FileCreateHandler(w http.ResponseWriter, r *http.Request) {
 				if imageUrl == "" {
 					err = getInstagramData(nextUrl, &d)
 					if err != nil {
-						log.Fatal(err)
+						panic(err)
 					}
 				}
 			}
