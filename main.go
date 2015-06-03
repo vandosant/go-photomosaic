@@ -190,7 +190,6 @@ func getInstagramData(url string, data *MediasResponse) error {
 	if err != nil {
 		return err
 	}
-	req.Header.Set("Connection", "close")
 
 	res, err := client.Do(req)
 	if err != nil {
@@ -202,9 +201,6 @@ func getInstagramData(url string, data *MediasResponse) error {
 	if err != nil {
 		return err
 	}
-
-	res.Close = true
-	res.Header.Set("Connection", "close")
 
 	err = json.Unmarshal(response, &data)
 	if err != nil {
@@ -221,7 +217,6 @@ func compareMedia(url string, parentHistogram Histogram, parentBounds image.Rect
 	if err != nil {
 		return true, Histogram{}, err
 	}
-	req.Header.Set("Connection", "close")
 
 	res, err := client.Do(req)
 	if err != nil {
@@ -233,9 +228,6 @@ func compareMedia(url string, parentHistogram Histogram, parentBounds image.Rect
 	if err != nil {
 		return true, Histogram{}, err
 	}
-
-	res.Close = true
-	res.Header.Set("Connection", "close")
 
 	histogram, compareBounds, err := generateHistogramFromContents(fileContent)
 	if err != nil {
