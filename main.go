@@ -94,59 +94,20 @@ func FileCreateHandler(w http.ResponseWriter, r *http.Request) {
 	across := int(parentBounds.Max.X / size)
 	tall := int(parentBounds.Max.Y / size)
 
+	var data MediasResponse
+	instagramUrl := "https://api.instagram.com/v1/tags/nofilter/media/recent?client_id=" + os.Getenv("CLIENT_ID")
+
+	err = getInstagramData(instagramUrl, &data)
+	if err != nil {
+		panic(err)
+	}
+
 	fmt.Println(across * tall)
 	for i := 0; i < across*tall; i++ {
 		wg.Add(1)
-		var data MediasResponse
-		instagramUrl := "https://api.instagram.com/v1/tags/nofilter/media/recent?client_id=" + os.Getenv("CLIENT_ID")
 
-		err = getInstagramData(instagramUrl, &data)
-		if err != nil {
-			panic(err)
-		}
+		go getAndCompareMedia(data, m, startX, startY, size, i, &imageUrls, &wg)
 
-		go func(d MediasResponse, i int) {
-			nextUrl := d.PaginationResponse.Pagination.NextUrl
-
-			parentSubImage := m.(interface {
-				SubImage(r image.Rectangle) image.Image
-			}).SubImage(image.Rect(startX, startY, startX+size, startY+size))
-			parentBounds := parentSubImage.Bounds()
-
-			subImageHistogram, err := (generateHistogramFromImage(parentSubImage))
-			if err != nil {
-				panic(err)
-			}
-
-			imageUrl := ""
-			outOfBounds := true
-			for imageUrl == "" && outOfBounds {
-				for _, media := range d.Medias {
-					url := media.Images.Thumbnail.Url
-
-					outOfBounds, _, err := compareMedia(url, subImageHistogram, parentBounds)
-					if err != nil {
-						panic(err)
-					}
-
-					if outOfBounds == false {
-						imageUrl = url
-						break
-					}
-				}
-				if imageUrl == "" {
-					err = getInstagramData(nextUrl, &d)
-					if err != nil {
-						panic(err)
-					}
-				}
-			}
-			imageUrls.Lock()
-			imageUrls.Urls = append(imageUrls.Urls, ImageUrl{Index: i, Url: imageUrl})
-			fmt.Println(len(imageUrls.Urls))
-			imageUrls.Unlock()
-			defer wg.Done()
-		}(data, i)
 		startX = startX + size
 		if startX > maxX {
 			startX = 0
@@ -174,6 +135,52 @@ func FileCreateHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		fmt.Println(w, err)
 	}
+}
+
+func getAndCompareMedia(d MediasResponse, m image.Image, startX int, startY int, size int, i int, imageUrls *ImageUrls, wg *sync.WaitGroup) {
+		nextUrl := d.PaginationResponse.Pagination.NextUrl
+
+		parentSubImage := m.(interface {
+			SubImage(r image.Rectangle) image.Image
+			}).SubImage(image.Rect(startX, startY, startX+size, startY+size))
+			parentBounds := parentSubImage.Bounds()
+
+			subImageHistogram, err := (generateHistogramFromImage(parentSubImage))
+			if err != nil {
+				panic(err)
+			}
+
+			imageUrl := ""
+			outOfBounds := true
+			for imageUrl == "" && outOfBounds {
+				for _, media := range d.Medias {
+					url := media.Images.Thumbnail.Url
+
+					imageUrls.Lock()
+					outOfBounds, _, err := compareMedia(url, subImageHistogram, parentBounds)
+					if err != nil {
+						panic(err)
+					}
+					imageUrls.Unlock()
+					if outOfBounds == false {
+						imageUrl = url
+						break
+					}
+				}
+				if imageUrl == "" {
+					var d MediasResponse
+					err = getInstagramData(nextUrl, &d)
+					if err != nil {
+						panic(err)
+					}
+				}
+			}
+			imageUrls.Lock()
+			imageUrls.Urls = append(imageUrls.Urls, ImageUrl{Index: i, Url: imageUrl})
+			fmt.Println(len(imageUrls.Urls))
+			imageUrls.Unlock()
+			defer wg.Done()
+			return
 }
 
 func getInstagramData(url string, data *MediasResponse) error {
